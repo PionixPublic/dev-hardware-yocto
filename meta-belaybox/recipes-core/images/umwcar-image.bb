@@ -15,7 +15,6 @@ include image_common.inc
 
 CORE_IMAGE_EXTRA_INSTALL += "\
         ${COMMON_PACKAGES} \
-        openjdk \
         python3-jinja2 \
         python3-pyyaml \
         python3-requests \
