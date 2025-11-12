@@ -1,0 +1,47 @@
+# Ignore everything in build, except the conf folder
+build/tmp/*
+build/cache/*
+build/downloads/*
+build/sstate-cache/*
+build/tmp/*
+build/bitbake-cookerdaemon.log
+build/bitbake.lock
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# source
+/source
+
+# ignore ide-files
+/.vscode

@@ -1,0 +1,52 @@
+From 623f0306bec6236ba0d27a92e4094ae30f9ba904 Mon Sep 17 00:00:00 2001
+From: Michael Vassernis <michael.vassernis@tandemg.com>
+Date: Mon, 2 May 2022 15:09:29 +0300
+Subject: [PATCH 3/3] slac: send CM_START_ATTEN.IND three times
+
+	the GreenPHY spec says to send CM_START_ATTEN.IND three
+	times to ensure that is is received.
+
+Signed-off-by: Michael Vassernis <michael.vassernis@tandemg.com>
+---
+ slac/pev_cm_start_atten_char.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/slac/pev_cm_start_atten_char.c b/slac/pev_cm_start_atten_char.c
+index cd8e47c7..6b82d512 100644
+--- a/slac/pev_cm_start_atten_char.c
++++ b/slac/pev_cm_start_atten_char.c
+@@ -82,24 +82,23 @@ signed pev_cm_start_atten_char (struct session * session, struct channel * chann
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+ 
+-#if 0
+-
+-/*
+- *	the GreenPHY spec says to send CM_START_ATTEN.IND three times to ensure
+- *	that is is received;
+- */
++	/*
++	 *	the GreenPHY spec says to send CM_START_ATTEN.IND three times to ensure
++	 *	that is is received;
++	 */
+ 
++	slac_debug (session, 0, __func__, "--> CM_START_ATTEN_CHAR.IND");
+ 	if (sendmessage (channel, message, (ETHER_MIN_LEN - ETHER_CRC_LEN)) <= 0)
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
++
++	slac_debug (session, 0, __func__, "--> CM_START_ATTEN_CHAR.IND");
+ 	if (sendmessage (channel, message, (ETHER_MIN_LEN - ETHER_CRC_LEN)) <= 0)
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+ 
+-#endif
+-
+ 	return (0);
+ }
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,11 @@
+[Unit]
+Description=Create Folders For Overlay Before Mount
+After=overlay.mount
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/overlayfs-init.sh
+
+[Install]
+WantedBy=multi-user.target

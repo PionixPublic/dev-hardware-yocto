@@ -1,0 +1,19 @@
+
+██████╗ ███████╗██╗      █████╗ ██╗   ██╗██████╗  ██████╗ ██╗  ██╗
+██╔══██╗██╔════╝██║     ██╔══██╗╚██╗ ██╔╝██╔══██╗██╔═══██╗╚██╗██╔╝
+██████╔╝█████╗  ██║     ███████║ ╚████╔╝ ██████╔╝██║   ██║ ╚███╔╝
+██╔══██╗██╔══╝  ██║     ██╔══██║  ╚██╔╝  ██╔══██╗██║   ██║ ██╔██╗
+██████╔╝███████╗███████╗██║  ██║   ██║   ██████╔╝╚██████╔╝██╔╝ ██╗
+╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
+
+
+Welcome to the Pionix BSP-Yocto buildsystem.
+You can build the following images:
+
+	$ bitbake belaybox-image
+	$ bitbake belaybox-bundle
+	$ bitbake umwcharger-image
+	$ bitbake umwcharger-bundle
+	$ bitbake umwcar-image
+	$ bitbake umwcar-bundle
+

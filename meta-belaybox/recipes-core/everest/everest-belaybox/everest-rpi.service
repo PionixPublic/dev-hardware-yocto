@@ -1,0 +1,19 @@
+[Unit]
+Description=EVerest
+Requires=mosquitto.service
+Requires=network.target
+After=mosquitto.service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=root
+LimitCORE=infinity
+ExecCondition=/bin/sh -c "if grep -q 'Model' /sys/firmware/devicetree/base/model; then exit 0; else exit 1; fi"
+WorkingDirectory=/usr/bin
+ExecStartPre=sleep 5
+ExecStart=/usr/bin/manager --conf /etc/everest/everest-rpi.yaml
+
+[Install]
+WantedBy=multi-user.target

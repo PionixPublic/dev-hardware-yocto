@@ -1,0 +1,519 @@
+name: Build All Bitbake Targets, Publish to Nexus, and Publish Bundles to Pionix Cloud
+
+on:
+  workflow_dispatch: # Manual trigger
+    inputs:
+      overwrite-display-app-ref:
+        description: 'Reference (branch or commit hash) of display-app to use'
+        required: false
+        default: ''
+      select-specific-buildtargets:
+        description: 'build for specified targets'
+        type: choice
+        default: 'all'
+        options:
+          - 'all'
+          - 'umwcharger-bundle'
+          - 'umwcar-bundle'
+          - 'belaybox-bundle'
+          - 'umwcharger-image'
+          - 'umwcar-image'
+          - 'belaybox-image'
+          - 'belaybox-sdk'
+      deploy-to-pionix-update-site:
+        description: 'If set to yes, will upload to Hetzner - aka pionix-update.de'
+        type: choice
+        default: 'no'
+        options:
+          - 'yes'
+          - 'no'
+      version_info:
+        description: 'The version information that can be added to the binaries for the deployment'
+        required: false
+        default: ''
+      pionix_update_destination_deploy_dir_input:
+        description: "The location on the server where the binaries will be deployed"
+        required: false
+        default: '/public_html/releases/candidate/'
+      pionix-cloud-domain:
+        description: 'URL of the Pionix Cloud (e.g. https://cloud.pionix.com)'
+        required: false
+        default: 'https://cloud.pionix.com'
+  push:
+    branches:
+      - kirkstone
+      - 'kirkstone-release/*'
+  pull_request:
+    branches:
+     - '*'
+
+env:
+  BB_NUMBER_THREADS: "5"
+  PARALLEL_MAKE: "-j 5"
+  SOURCEROOT: ${{ github.workspace }}/source
+  SSTATE_DIR: "${HOME}/data/bitbake.sstate"
+  DL_DIR: "${HOME}/data/bitbake.downloads"
+  BB_ENV_PASSTHROUGH_ADDITIONS: "SOURCEROOT DL_DIR SSTATE_DIR OVERWRITE_DISPLAY_APP_REF"
+
+jobs:
+  build:
+    runs-on: yocto-runner
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
+      actions: read
+    steps:
+    - name: Set version_info from branch name if not provided via input
+      id: set-version-info
+      run: |
+        # Check if the input parameter 'version_info' is empty
+        if [ -z "${{ github.event.inputs.version_info }}" ]; then
+          # Extract branch name from GITHUB_REF.
+          VERSION_INFO=$(echo "${GITHUB_REF}" | awk -F'/' '{print $3}')
+          echo "No version_info provided, using branch name: ${VERSION_INFO}"
+        else
+          echo "Using provided version_info: ${{ github.event.inputs.version_info }}"
+          VERSION_INFO="${{ github.event.inputs.version_info }}"
+        fi
+        echo "version_info=${VERSION_INFO}" >> $GITHUB_OUTPUT
+
+    - name: Collect workflow telemetry
+      uses: catchpoint/workflow-telemetry-action@v2
+      with:
+        comment_on_pr: false
+
+    - name: Inject slug/short variables
+      uses: rlespinasse/github-slug-action@v4
+
+    # This is useful for debugging, because the pipeline depends a lot on the runner-setup.
+    - name: Check available storage
+      run: |
+        echo "Checking available storage on runner..."
+        df -h
+
+    - name: Set release channel
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "RELEASE_CHANNEL=manually-triggered" >> "$GITHUB_ENV"
+          echo "Workflow was manually triggered. Release channel set to 'manually-triggered'."
+        else
+          # Use GITHUB_HEAD_REF for PRs (if available) or extract branch from GITHUB_REF
+          branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          echo "Branch name: $branch"
+
+          if [[ "$branch" == "kirkstone" ]]; then
+            echo "RELEASE_CHANNEL=kirkstone" >> "$GITHUB_ENV"
+          elif [[ "$branch" == release/* ]]; then # Matches branches like release/v1.0, release/feature-foo
+            echo "RELEASE_CHANNEL=latest-release-branch-build" >> "$GITHUB_ENV"
+          elif [[ "$branch" == kirkstone-release/* ]]; then # Matches branches like kirkstone-release/v1.0
+             echo "RELEASE_CHANNEL=latest-release-branch-build" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_CHANNEL=latest-pr" >> "$GITHUB_ENV"
+          fi
+        fi
+        echo "Final RELEASE_CHANNEL is: ${RELEASE_CHANNEL}"
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set PIONIX_CLOUD_DOMAIN environment variable
+      run: |
+        echo "PIONIX_CLOUD_DOMAIN=${{ github.event.inputs.pionix-cloud-domain || 'https://cloud.pionix.com' }}" >> $GITHUB_ENV
+        echo "PIONIX_CLOUD_API_URL=${{ github.event.inputs.pionix-cloud-domain || 'https://cloud.pionix.com' }}/api" >> $GITHUB_ENV
+
+    - name: Clean up old files in build output
+      run: |
+        echo "Deleting files older than 1 day in ${{ github.workspace }}/build/tmp/deploy/images/raspberrypi4/..."
+        if [ -d ${{ github.workspace }}/build/tmp/deploy/images/raspberrypi4/ ]; then
+          find ${{ github.workspace }}/build/tmp/deploy/images/raspberrypi4/ -type f -mtime +1 -print -delete
+        else
+          echo "Directory ${{ github.workspace }}/build/tmp/deploy/images/raspberrypi4/ does not exist. Skipping cleanup."
+        fi
+
+    - name: Set OVERWRITE_DISPLAY_APP_REF
+      if: github.event.inputs.overwrite-display-app-ref
+      run: |
+        echo "OVERWRITE_DISPLAY_APP_REF=${{ github.event.inputs.overwrite-display-app-ref }}" >> $GITHUB_ENV
+
+    - name: Set up SSH key
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+
+        # Check if github.com is already in known_hosts, if not, add it
+        if ! grep -q "^github.com " ~/.ssh/known_hosts; then
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+        fi
+
+    - name: Set up environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y chrpath cpio diffstat gawk lz4 zstd vim tree curl
+        # yocto deps
+        sudo apt-get install -y gawk wget git diffstat unzip texinfo gcc build-essential chrpath socat cpio python3 python3-pip python3-pexpect xz-utils debianutils iputils-ping python3-git python3-jinja2 python3-subunit zstd liblz4-tool file locales libacl1
+        sudo locale-gen en_US.UTF-8
+
+        # Download the Pionix CLI
+        curl -o pionixcli "${{ github.event.inputs.pionix-cloud-domain || 'https://cloud.pionix.com' }}/downloads/pc-cli/pc-cli-linux-x64"
+        # check the downloaded file is an executable
+        file pionixcli | grep ELF
+        chmod +x pionixcli
+
+    - name: Initialize setup
+      run: |
+        ./setup --init
+
+    - name: Build belaybox-bundle
+      id: build-belay-box
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'belaybox-bundle' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push') ||
+        (github.event_name == 'pull_request')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake belaybox-bundle
+
+    - name: Nexus Repo Publish Belaybox Bundle
+      if: steps.build-belay-box.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: belaybox-bundle
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=belaybox-bundle-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.raucb
+        filename: build/tmp/deploy/images/raspberrypi4/belaybox-bundle-raspberrypi4.raucb
+
+    - name: Pionix Cloud Publish Belaybox Bundle
+      if: steps.build-belay-box.outcome == 'success'
+      env:
+        PIONIX_CLOUD_API_KEY: ${{ secrets.PIONIX_CLOUD_API_KEY }}
+      run: |
+        ./pionixcli bundle upload \
+          --edition-id com.pionix.belaybox \
+          --version "${{ github.run_number }}-${{ github.run_attempt }}" \
+          --input build/tmp/deploy/images/raspberrypi4/belaybox-bundle-raspberrypi4.raucb \
+          --release-channel "${{ env.RELEASE_CHANNEL }}"
+
+    - name: Build belaybox-image
+      id: build-belay-box-image
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'belaybox-image' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake belaybox-image
+        echo "Testing the image integrity and showing the SHA256 sum of build/tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bz2"
+        bunzip2 -t tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bz2
+        sha256sum tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bz2
+
+    - name: Nexus Repo Publish Belaybox Image (wic.bz2)
+      if: steps.build-belay-box-image.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: belaybox-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=belaybox-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2
+        filename: build/tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bz2
+
+    - name: Nexus Repo Publish Belaybox Image (wic.bmap)
+      if: steps.build-belay-box-image.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: belaybox-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=belaybox-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap
+        filename: build/tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bmap
+
+    - name: Build belaybox SDK
+      id: build-belay-box-sdk
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'belaybox-sdk' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake belaybox-image -c populate_sdk
+
+    - name: Nexus Repo Publish Belaybox SDK (Toolchain shell file)
+      if: steps.build-belay-box-sdk.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: belaybox-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16-${{ github.run_number }}-${{ github.run_attempt }}.sh
+        filename: build/tmp/deploy/sdk/poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16.sh
+
+    - name: Build umwcar-bundle
+      id: build-umwcar
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'umwcar-bundle' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake umwcar-bundle
+
+    - name: Nexus Repo Publish umwcar-bundle
+      if: steps.build-umwcar.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: umwcar-bundle
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=umwcar-bundle-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.raucb
+        filename: build/tmp/deploy/images/raspberrypi4/umwcar-bundle-raspberrypi4.raucb
+
+    - name: Pionix Cloud Publish Umwcar Bundle
+      if: steps.build-umwcar.outcome == 'success'
+      env:
+        PIONIX_CLOUD_API_KEY: ${{ secrets.PIONIX_CLOUD_API_KEY }}
+      run: |
+        ./pionixcli bundle upload \
+          --edition-id com.pionix.umwcar \
+          --version "${{ github.run_number }}-${{ github.run_attempt }}" \
+          --input build/tmp/deploy/images/raspberrypi4/umwcar-bundle-raspberrypi4.raucb \
+          --release-channel "${{ env.RELEASE_CHANNEL }}"
+
+    - name: Build umwcar-image
+      id: build-umwcar-image
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'umwcar-image' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake umwcar-image
+        echo "Testing the image integrity and showing the SHA256 sum of build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2"
+        bunzip2 -t tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2
+        sha256sum tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2
+
+    - name: Nexus Repo Publish Umwcar Image (wic.bz2)
+      if: steps.build-umwcar-image.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: umwcar-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=umwcar-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2
+        filename: build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2
+
+    - name: Nexus Repo Publish Umwcar Image (wic.bmap)
+      if: steps.build-umwcar-image.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: umwcar-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=umwcar-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap
+        filename: build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bmap
+
+    - name: Build umwcharger-bundle
+      id: build-umwcharger
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'umwcharger-bundle' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push') ||
+        (github.event_name == 'pull_request')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake umwcharger-bundle
+
+    - name: Nexus Repo Publish umwcharger-bundle
+      if: steps.build-umwcharger.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: umwcharger-bundle
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=umwcharger-bundle-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.raucb
+        filename: build/tmp/deploy/images/raspberrypi4/umwcharger-bundle-raspberrypi4.raucb
+
+    - name: Pionix Cloud Publish Umwcharger Bundle
+      if: steps.build-umwcharger.outcome == 'success'
+      env:
+        PIONIX_CLOUD_API_KEY: ${{ secrets.PIONIX_CLOUD_API_KEY }}
+      run: |
+        ./pionixcli bundle upload \
+          --edition-id com.pionix.umwcharger \
+          --version "${{ github.run_number }}-${{ github.run_attempt }}" \
+          --input build/tmp/deploy/images/raspberrypi4/umwcharger-bundle-raspberrypi4.raucb \
+          --release-channel "${{ env.RELEASE_CHANNEL }}"
+
+    - name: Build umwcharger-image
+      id: build-umwcharger-image
+      if: |
+        (github.event_name == 'workflow_dispatch' && 
+         (github.event.inputs.select-specific-buildtargets == 'all' || 
+          github.event.inputs.select-specific-buildtargets == 'umwcharger-image' || 
+          github.event.inputs.select-specific-buildtargets == '')) ||
+        (github.event_name == 'push')
+      run: |
+        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
+        bitbake umwcharger-image
+        echo "Testing the image integrity and showing the SHA256 sum of build/tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bz2"
+        bunzip2 -t tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bz2
+        sha256sum tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bz2
+
+    - name: Nexus Repo Publish Umwcharger Image (wic.bz2)
+      if: steps.build-umwcharger-image.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: umwcharger-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=umwcharger-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2
+        filename: build/tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bz2
+
+    - name: Nexus Repo Publish Umwcharger Image (wic.bmap)
+      if: steps.build-umwcharger-image.outcome == 'success'
+      uses: sonatype-nexus-community/nexus-repo-github-action@master
+      with:
+        serverUrl: https://nexus.pionix.net
+        username: ${{ secrets.NEXUS_USER }}
+        password: ${{ secrets.NEXUS_PASSWORD }}
+        format: raw
+        repository: umwcharger-image
+        coordinates: directory=${{ env.RELEASE_CHANNEL }}
+        assets: filename=umwcharger-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap
+        filename: build/tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bmap
+
+    - name: Create temp folder for deployment files for pionix-update.de
+      id: prepare_for_deployment
+      if: inputs.deploy-to-pionix-update-site == 'yes'
+      run: |
+        DEPLOY_DIR=$(mktemp -d -p ${{ runner.temp }})
+        echo "LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE=$DEPLOY_DIR" >> $GITHUB_ENV
+
+    - name: Assemble belaybox deployment files for pionix-update.de
+      id: prepare_deploy_belaybox
+      if: >
+        (steps.build-belay-box.outcome == 'success' ||
+        steps.build-belay-box-image.outcome == 'success' ||
+        steps.build-belay-box-sdk.outcome == 'success') &&
+        inputs.deploy-to-pionix-update-site == 'yes'
+      run: |
+        echo "Assembling belaybox files in: $LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/belaybox-bundle-raspberrypi4.raucb* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/belaybox-bundle-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.raucb"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bz2* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/belaybox-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/belaybox-image-raspberrypi4.wic.bmap* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/belaybox-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap"
+        cp --dereference build/tmp/deploy/sdk/poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16.sh \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.sh"
+
+    - name: Assemble umwcar deployment files for pionix-update.de
+      id: prepare_deploy_umwcar
+      if: >
+        (steps.build-umwcar.outcome == 'success' ||
+        steps.build-umwcar-image.outcome == 'success') &&
+        inputs.deploy-to-pionix-update-site == 'yes'
+      run: |
+        echo "Assembling umwcar files in: $LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcar-bundle-raspberrypi4.raucb* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcar-bundle-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.raucb"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcar-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bmap* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcar-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap"
+
+    - name: Assemble umwcharger deployment files for pionix-update.de
+      id: prepare_deploy_umwcharger
+      if: >
+        (steps.build-umwcharger.outcome == 'success' ||
+        steps.build-umwcharger-image.outcome == 'success') &&
+        inputs.deploy-to-pionix-update-site == 'yes'
+      run: |
+        echo "Assembling umwcharger files in: $LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcharger-bundle-raspberrypi4.raucb* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcharger-bundle-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.raucb"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bz2* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcharger-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2"
+        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcharger-image-raspberrypi4.wic.bmap* \
+          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcharger-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap"
+
+    - name: Upload ftp
+      if: >
+        steps.prepare_deploy_belaybox.outcome == 'success' ||
+        steps.prepare_deploy_umwcar.outcome == 'success' ||
+        steps.prepare_deploy_umwcharger.outcome == 'success'
+      run: |
+        for file in "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"/*; do
+          # Check if it's a regular file (not a directory)
+          if [[ -f "$file" ]]; then
+            echo "Uploading the file: $file"
+            filename=$(basename "$file")
+            curl --fail --show-error -T $file sftp://${{ secrets.FTP_SERVER }}/${{ github.event.inputs.pionix_update_destination_deploy_dir_input }}/$filename --user ${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}
+          fi
+        done
+
+    - name: Clean up temporary space used for binary deployment
+      if: inputs.deploy-to-pionix-update-site == 'yes'
+      run: |
+        echo "Cleaning up folder $LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"
+        rm -rf $LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE
+
+    # This is useful for debugging, because the pipeline depends a lot on the runner-setup.
+    - name: Build Output Tree
+      if: always()
+      run: |
+        tree -a build/tmp/deploy
+
+    - name: Check available storage
+      if: always()
+      run: |
+        echo "Checking available storage on runner..."
+        df -h
+
+    - name: Clean up SSH key
+      if: always()
+      run: rm -f ~/.ssh/id_ed25519

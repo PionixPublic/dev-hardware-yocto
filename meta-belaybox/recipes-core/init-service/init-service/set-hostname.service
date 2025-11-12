@@ -1,0 +1,11 @@
+[Unit]
+Description=Set hostname from /etc/hostname
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "/bin/hostnamectl set-hostname $(cat /etc/hostname)"
+
+[Install]
+WantedBy=multi-user.target

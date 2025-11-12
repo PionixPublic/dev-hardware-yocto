@@ -1,0 +1,10 @@
+[Unit]
+Description=Test Update Service
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/test.sh
+
+[Install]
+WantedBy=multi-user.target

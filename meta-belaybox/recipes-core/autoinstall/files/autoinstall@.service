@@ -1,0 +1,12 @@
+[Unit]
+Description=Autoinstall Service
+After=udev.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/environment
+ExecStart=/usr/bin/autoinstall.sh %i
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

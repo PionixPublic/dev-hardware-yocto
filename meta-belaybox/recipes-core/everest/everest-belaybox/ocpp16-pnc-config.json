@@ -1,0 +1,64 @@
+{
+    "Internal": {
+        "ChargePointId": "MYCHARGER001",
+        "CentralSystemURI": "wss://myaccount.gridundco.de/1.0/ocpp/1.6/cs/MYCHARGER001",
+        "ChargeBoxSerialNumber": "PIONIX001",
+        "ChargePointModel": "Yeti",
+        "ChargePointVendor": "Pionix",
+        "FirmwareVersion": "0.1",
+        "AllowChargingProfileWithoutStartSchedule": true,
+        "UseTPM" : false,
+        "VerifyCsmsCommonName" : false,
+        "LogMessagesFormat": ["html","security"]
+    },
+    "Core": {
+        "AuthorizeRemoteTxRequests": false,
+        "ClockAlignedDataInterval": 900,
+        "ConnectionTimeOut": 30,
+        "ConnectorPhaseRotation": "0.RST,1.RST",
+        "GetConfigurationMaxKeys": 100,
+        "HeartbeatInterval": 86400,
+        "LocalAuthorizeOffline": false,
+        "LocalPreAuthorize": false,
+        "MeterValuesAlignedData": "Energy.Active.Import.Register",
+        "MeterValuesSampledData": "Energy.Active.Import.Register",
+        "MeterValueSampleInterval": 60,
+        "NumberOfConnectors": 1,
+        "ResetRetries": 1,
+        "StopTransactionOnEVSideDisconnect": true,
+        "StopTransactionOnInvalidId": true,
+        "StopTxnAlignedData": "Energy.Active.Import.Register",
+        "StopTxnSampledData": "Energy.Active.Import.Register",
+        "SupportedFeatureProfiles": "Core,FirmwareManagement,RemoteTrigger,Reservation,LocalAuthListManagement,SmartCharging",
+        "TransactionMessageAttempts": 1,
+        "TransactionMessageRetryInterval": 10,
+        "UnlockConnectorOnEVSideDisconnect": true,
+        "WebsocketPingInterval": 0
+    },
+    "FirmwareManagement": {
+        "SupportedFileTransferProtocols": "FTP"
+    },
+    "Security": {
+        "CpoName": "Pionix",
+        "AuthorizationKey": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "SecurityProfile": 2
+    },
+    "LocalAuthListManagement": {
+        "LocalAuthListEnabled": true,
+        "LocalAuthListMaxLength": 42,
+        "SendLocalListMaxLength": 42
+    },
+    "SmartCharging": {
+        "ChargeProfileMaxStackLevel": 42,
+        "ChargingScheduleAllowedChargingRateUnit": "Current,Power",
+        "ChargingScheduleMaxPeriods": 42,
+        "MaxChargingProfilesInstalled": 42
+    },
+    "PnC": {
+        "ISO15118PnCEnabled": true,
+        "ContractValidationOffline": true
+    },
+    "Custom": {
+        "ExampleConfigurationKey": "example"
+    }
+}

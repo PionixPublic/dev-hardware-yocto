@@ -1,0 +1,1466 @@
+From 44fed299aabfce4f48ba86efe43a998bdfa3d966 Mon Sep 17 00:00:00 2001
+From: Michael Vassernis <michael.vassernis@tandemg.com>
+Date: Thu, 26 May 2022 16:30:11 +0300
+Subject: [PATCH] rework slac code to support multiple device situations
+
+Signed-off-by: Michael Vassernis <michael.vassernis@tandemg.com>
+---
+ make.def                        |   8 +-
+ slac/Makefile                   |   2 +-
+ slac/evse.c                     | 240 ++++++++++++++++++++++++--------
+ slac/evse_cm_atten_char.c       |  27 +++-
+ slac/evse_cm_mnbc_sound.c       |   3 +-
+ slac/evse_cm_set_key.c          |   1 +
+ slac/evse_cm_slac_match.c       |  22 +++
+ slac/evse_cm_slac_param.c       |  49 ++++++-
+ slac/evse_cm_start_atten_char.c |  27 +++-
+ slac/pev.c                      |  73 ++++++----
+ slac/pev_cm_atten_char.c        | 105 +++++++++++++-
+ slac/pev_cm_set_key.c           |   1 +
+ slac/pev_cm_slac_match.c        |  14 +-
+ slac/pev_cm_slac_param.c        |  91 +++++++++++-
+ slac/pev_cm_start_atten_char.c  |   7 +
+ slac/slac.h                     |  12 ++
+ slac/slac_connect.c             |  72 +++++++---
+ slac/slac_debug.c               |  10 +-
+ tools/version.c                 |   3 +-
+ tools/version.h                 |   1 +
+ 20 files changed, 630 insertions(+), 138 deletions(-)
+
+diff --git a/make.def b/make.def
+index 7cee5036..3c73467b 100755
+--- a/make.def
++++ b/make.def
+@@ -53,13 +53,13 @@
+ # toolchain;
+ # --------------------------------------------------------------------
+ 
+-AR=$(CROSS)ar
++#AR=$(CROSS)ar
+ CAS=$(CROSS)gcc -c
+-CC=$(CROSS)gcc
++#CC=$(CROSS)gcc
+ CXX=$(CROSS)g++
+-LD=$(CROSS)ld
++#LD=$(CROSS)ld
+ RANLIB=$(CROSS)ranlib
+-STRIP=$(CROSS)strip
++#STRIP=$(CROSS)strip
+ 
+ # ====================================================================
+ # installation folders;
+diff --git a/slac/Makefile b/slac/Makefile
+index 2a205235..071ce3bd 100755
+--- a/slac/Makefile
++++ b/slac/Makefile
+@@ -12,7 +12,7 @@ include ../make.def
+ # --------------------------------------------------------------------
+ 
+ # CFLAGS+= -DSLAC_DEBUG
+-LDFLAGS+=
++LDFLAGS+=-lpthread
+ TRASH=*.o *.obj *.exe t t.* *~ *.[0-9][0-9][0-9] 
+ FILES=Makefile *.mak *.sh *.c *.h 
+ TOOLS=evse pev
+diff --git a/slac/evse.c b/slac/evse.c
+index 68ba29f7..7c4dffab 100644
+--- a/slac/evse.c
++++ b/slac/evse.c
+@@ -81,6 +81,7 @@
+ #include <string.h>
+ #include <limits.h>
+ #include <errno.h>
++#include <pthread.h>
+ #include <sys/time.h>
+ 
+ /*====================================================================*
+@@ -171,10 +172,22 @@
+ #define EVSE_STATE_UNMATCHED 2
+ #define EVSE_STATE_MATCHED 3
+ 
++#define MAX_NUM_SESSIONS 5
++
+ #define EVSE_SID "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" // Station Identifier
+ #define EVSE_NMK "B59319D7E8157BA001B018669CCEE30D"   // HomePlugAV0123
+ #define EVSE_NID "026BCBA5354E08"                     // HomePlugAV0123
+ 
++static struct channel channels[MAX_NUM_SESSIONS];
++static struct session sessions[MAX_NUM_SESSIONS];
++static struct message messages[MAX_NUM_SESSIONS];
++
++volatile unsigned match_received = false;
++static volatile struct session *print_owner = NULL;
++static pthread_mutex_t print_lock = PTHREAD_MUTEX_INITIALIZER;
++static pthread_cond_t match_cond = PTHREAD_COND_INITIALIZER;
++static pthread_mutex_t match_lock = PTHREAD_MUTEX_INITIALIZER;
++static int dont_loop = 0;
+ 
+ /*====================================================================*
+  *
+@@ -257,8 +270,38 @@ static void UnoccupiedState (struct session * session, struct channel * channel,
+ 
+ {
+ 	slac_session (session);
+-	slac_debug (session, 0, __func__, "Listening ...");
+-	while (evse_cm_slac_param (session, channel, message));
++	pthread_mutex_lock(&print_lock);
++	if (print_owner == NULL)
++	{
++		print_owner = session;
++	}
++	if (print_owner == session)
++	{
++		slac_debug (session, 0, __func__, "Listening ...");
++	}
++	pthread_mutex_unlock(&print_lock);
++	while (evse_cm_slac_param (session, channel, message))
++	{
++		memset(session->PEV_MAC, 0, sizeof(session->PEV_MAC));
++		memset(session->RunID, 0, sizeof(session->RunID));
++		pthread_mutex_lock(&print_lock);
++		if (match_received)
++		{
++			if (print_owner == session)
++			{
++				print_owner = NULL;
++			}
++			pthread_mutex_unlock(&print_lock);
++			return;
++		}
++		pthread_mutex_unlock(&print_lock);
++	}
++	pthread_mutex_lock(&print_lock);
++	if (print_owner == session)
++	{
++		print_owner = NULL;
++	}
++	pthread_mutex_unlock(&print_lock);
+ 	session->state = EVSE_STATE_UNMATCHED;
+ 	return;
+ }
+@@ -362,6 +405,68 @@ static void MatchedState (struct session * session, struct channel * channel, st
+ 	return;
+ }
+ 
++static void * EvseStateMachineThread(void * arg)
++{
++	unsigned i = *((unsigned*)arg);
++	while (sessions[i].state)
++	{
++		if (sessions[i].state == EVSE_STATE_UNOCCUPIED)
++		{
++			memset(sessions[i].PEV_MAC, 0, sizeof(sessions[i].PEV_MAC));
++			memset(sessions[i].RunID, 0, sizeof(sessions[i].RunID));
++			pthread_mutex_lock(&match_lock);
++			if (match_received)
++			{
++				pthread_cond_wait(&match_cond, &match_lock);
++				channels[i].capture = 0;
++				while (readpacket (& channels[i], & messages[i], sizeof (messages[i])) > 0);
++				channels[i].capture = CHANNEL_TIMEOUT;
++			}
++			pthread_mutex_unlock(&match_lock);
++			UnoccupiedState (& sessions[i], & channels[i], & messages[i]);
++			pthread_mutex_lock(&match_lock);
++			if (match_received)
++			{
++				sessions[i].state = EVSE_STATE_UNOCCUPIED;
++				pthread_cond_wait(&match_cond, &match_lock);
++				channels[i].capture = 0;
++				while (readpacket (& channels[i], & messages[i], sizeof (messages[i])) > 0);
++				channels[i].capture = CHANNEL_TIMEOUT;
++			}
++			pthread_mutex_unlock(&match_lock);
++			continue;
++		}
++		if (sessions[i].state == EVSE_STATE_UNMATCHED)
++		{
++			UnmatchedState (& sessions[i], & channels[i], & messages[i]);
++			if (dont_loop && sessions[i].state == EVSE_STATE_UNAVAILABLE)
++			{
++				break;
++			}
++			continue;
++		}
++		if (sessions[i].state == EVSE_STATE_MATCHED)
++		{
++			MatchedState (& sessions[i], & channels[i], & messages[i]);
++			channels[i].capture = 0;
++			while (readpacket (& channels[i], & messages[i], sizeof (messages[i])) > 0);
++			channels[i].capture = CHANNEL_TIMEOUT;
++			pthread_mutex_lock(&match_lock);
++			match_received = false;
++			pthread_cond_broadcast(&match_cond);
++			pthread_mutex_unlock(&match_lock);
++			if (dont_loop)
++			{
++				break;
++			}
++			continue;
++		}
++		slac_debug (& sessions[i], 1, __func__, "Illegal state!");
++	}
++
++	return NULL;
++}
++
+ /*====================================================================*
+  *
+  *   int main (int argc, char const * argv[]);
+@@ -371,6 +476,8 @@ static void MatchedState (struct session * session, struct channel * channel, st
+ int main (int argc, char const * argv [])
+ 
+ {
++	pthread_t threads[MAX_NUM_SESSIONS];
++	unsigned sess_idx_arr[MAX_NUM_SESSIONS];
+ 	extern struct channel channel;
+ 	static char const * optv [] =
+ 	{
+@@ -400,33 +507,35 @@ int main (int argc, char const * argv [])
+ 		"x\texit on error",
+ 		(char const *) (0)
+ 	};
+-	struct session session;
+-	struct message message;
+ 	char const * profile = PROFILE;
+ 	char const * section = SECTION;
++	signed i;
+ 	signed c;
+-	int dont_loop = 0;
+ 
+-	initchannel (&channel);
+-	desuid ();
+-
+-	memset (& session, 0, sizeof (session));
+-	memset (& message, 0, sizeof (message));
+-	channel.timeout = SLAC_TIMEOUT;
+-	if (getenv (PLCDEVICE))
++	for (i = 0; i < MAX_NUM_SESSIONS; i++)
+ 	{
++		memcpy(&channels[i], &channel, sizeof(channel));
++		initchannel (&channels[i]);
++		channels[i].timeout = SLAC_TIMEOUT;
++		if (getenv (PLCDEVICE))
++		{
+ 
+-#if defined (WINPCAP) || defined (LIBPCAP)
++	#if defined (WINPCAP) || defined (LIBPCAP)
+ 
+-		channel.ifindex = atoi (getenv (PLCDEVICE));
++			channels[i].ifindex = atoi (getenv (PLCDEVICE));
+ 
+-#else
++	#else
+ 
+-		channel.ifname = strdup (getenv (PLCDEVICE));
++			channels[i].ifname = strdup (getenv (PLCDEVICE));
+ 
+-#endif
++	#endif
+ 
++		}
+ 	}
++	desuid ();
++
++	memset (& sessions, 0, sizeof (sessions));
++	memset (& messages, 0, sizeof (messages));
+ 	optind = 1;
+ 	while (~ (c = getoptv (argc, argv, optv)))
+ 	{
+@@ -436,10 +545,16 @@ int main (int argc, char const * argv [])
+ 			configure ();
+ 			return (0);
+ 		case 'C':
+-			_setbits (session.flags, SLAC_COMPARE);
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				_setbits (sessions[i].flags, SLAC_COMPARE);
++			}
+ 			break;
+ 		case 'd':
+-			_setbits (session.flags, (SLAC_VERBOSE | SLAC_SESSION));
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				_setbits (sessions[i].flags, (SLAC_VERBOSE | SLAC_SESSION));
++			}
+ 			break;
+ 		case 'i':
+ 
+@@ -449,14 +564,20 @@ int main (int argc, char const * argv [])
+ 
+ #else
+ 
+-			channel.ifname = optarg;
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				channels[i].ifname = optarg;
++			}
+ 
+ #endif
+ 
+ 			break;
+ 
+ 		case 'K':
+-			_setbits (session.flags, SLAC_SOUNDONLY);
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				_setbits (sessions[i].flags, SLAC_SOUNDONLY);
++			}
+ 			break;
+ 		case 'l':
+ 			dont_loop = 1;
+@@ -468,17 +589,29 @@ int main (int argc, char const * argv [])
+ 			section = optarg;
+ 			break;
+ 		case 'q':
+-			_setbits (channel.flags, CHANNEL_SILENCE);
+-			_setbits (session.flags, SLAC_SILENCE);
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				_setbits (channels[i].flags, CHANNEL_SILENCE);
++				_setbits (sessions[i].flags, SLAC_SILENCE);
++			}
+ 			break;
+ 		case 't':
+-			channel.timeout = (signed) (uintspec (optarg, 0, UINT_MAX));
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				channels[i].timeout = (signed) (uintspec (optarg, 0, UINT_MAX));
++			}
+ 			break;
+ 		case 'v':
+-			_setbits (channel.flags, CHANNEL_VERBOSE);
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				_setbits (channels[i].flags, CHANNEL_VERBOSE);
++			}
+ 			break;
+ 		case 'x':
+-			session.exit = session.exit? 0: 1;
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				sessions[i].exit = sessions[i].exit? 0: 1;
++			}
+ 			break;
+ 		default:
+ 			break;
+@@ -488,46 +621,33 @@ int main (int argc, char const * argv [])
+ 	argv += optind;
+ 	if (argc)
+ 	{
+-		slac_debug (& session, 1, __func__, ERROR_TOOMANY);
++		slac_debug (& sessions[0], 1, __func__, ERROR_TOOMANY);
+ 	}
+-	openchannel (& channel);
+-	initialize (& session, profile, section);
+-	identifier (& session, & channel);
+-	if (_allclr (session.flags, SLAC_SOUNDONLY))
++	for (i = 0; i < MAX_NUM_SESSIONS; i++)
+ 	{
+-		if (evse_cm_set_key (& session, & channel, & message))
+-		{
+-			slac_debug (& session, 1, __func__, "Can't set key.");
+-		}
+-		sleep (session.settletime);
++		openchannel (& channels[i]);
++		initialize (& sessions[i], profile, section);
++		identifier (& sessions[i], & channels[i]);
++		sessions[i].next = &sessions[(i + 1) % MAX_NUM_SESSIONS];
++		sessions[i].prev = &sessions[((i - 1) + MAX_NUM_SESSIONS) % MAX_NUM_SESSIONS];
+ 	}
+-	while (session.state)
++	if (_allclr (sessions[0].flags, SLAC_SOUNDONLY))
+ 	{
+-		if (session.state == EVSE_STATE_UNOCCUPIED)
++		if (evse_cm_set_key (& sessions[0], & channels[0], & messages[0]))
+ 		{
+-			UnoccupiedState (& session, & channel, & message);
+-			continue;
++			slac_debug (& sessions[0], 1, __func__, "Can't set key.");
+ 		}
+-		if (session.state == EVSE_STATE_UNMATCHED)
+-		{
+-			UnmatchedState (& session, & channel, & message);
+-			if (dont_loop && session.state == EVSE_STATE_UNAVAILABLE)
+-			{
+-				break;
+-			}
+-			continue;
+-		}
+-		if (session.state == EVSE_STATE_MATCHED)
+-		{
+-			MatchedState (& session, & channel, & message);
+-			if (dont_loop)
+-			{
+-				break;
+-			}
+-			continue;
+-		}
+-		slac_debug (& session, 1, __func__, "Illegal state!");
++		sleep (sessions[0].settletime);
++	}
++	for (i = 0; i < MAX_NUM_SESSIONS; i++)
++	{
++		sess_idx_arr[i] = i;
++		pthread_create(&threads[i], NULL, EvseStateMachineThread, &sess_idx_arr[i]);
++	}
++	for (i = 0; i < MAX_NUM_SESSIONS; i++)
++	{
++		pthread_join(threads[i], NULL);
++		closechannel (& channels[i]);
+ 	}
+-	closechannel (& channel);
+ 	exit (0);
+ }
+diff --git a/slac/evse_cm_atten_char.c b/slac/evse_cm_atten_char.c
+index 9de19b94..8b8996a4 100644
+--- a/slac/evse_cm_atten_char.c
++++ b/slac/evse_cm_atten_char.c
+@@ -54,11 +54,15 @@
+ #define EVSE_CM_ATTEN_CHAR_SOURCE
+ 
+ #include <string.h>
++#include <sys/time.h>
++#include <stdlib.h>
++#include <time.h>
+ 
+ #include "../ether/channel.h"
+ #include "../tools/memory.h"
+ #include "../tools/error.h"
+ #include "../tools/flags.h"
++#include "../tools/timer.h"
+ #include "../slac/slac.h"
+ 
+ signed evse_cm_atten_char (struct session * session, struct channel * channel, struct message * message)
+@@ -66,7 +70,11 @@ signed evse_cm_atten_char (struct session * session, struct channel * channel, s
+ {
+ 	struct cm_atten_char_indicate * indicate = (struct cm_atten_char_indicate *) (message);
+ 	struct cm_atten_char_response * response = (struct cm_atten_char_response *) (message);
+-	slac_debug (session, 0, __func__, "--> CM_ATTEN_CHAR.IND");
++	unsigned attempt = 0;
++	srand(time(NULL));
++	SLEEP ((rand() % 15));
++again:
++	slac_debug (session, 0, __func__, "--> CM_ATTEN_CHAR.IND (%u)", attempt);
+ 	memset (message, 0, sizeof (* message));
+ 	EthernetHeader (& indicate->ethernet, session->PEV_MAC, channel->host, channel->type);
+ 	HomePlugHeader1 (& indicate->homeplug, HOMEPLUG_MMV, (CM_ATTEN_CHAR | MMTYPE_IND));
+@@ -79,14 +87,22 @@ signed evse_cm_atten_char (struct session * session, struct channel * channel, s
+ 	indicate->ACVarField.NUM_SOUNDS = session->sounds;
+ 	indicate->ACVarField.ATTEN_PROFILE.NumGroups = session->NumGroups;
+ 	memcpy (indicate->ACVarField.ATTEN_PROFILE.AAG, session->AAG, session->NumGroups);
++	channel->capture = 10;
++	channel->timeout = (TT_MATCH_RESPONSE_MS / 2) + (rand() % 10);
+ 	if (sendmessage (channel, message, sizeof (* indicate)) <= 0)
+ 	{
++		channel->capture = CHANNEL_TIMEOUT;
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+-	if (readmessage (channel, message, HOMEPLUG_MMV, (CM_ATTEN_CHAR | MMTYPE_RSP)) > 0)
++	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_ATTEN_CHAR | MMTYPE_RSP)) > 0)
+ 	{
+ 		if (! memcmp (session->RunID, response->ACVarField.RunID, sizeof (session->RunID)))
+ 		{
++			if (memcmp (session->EVSE_MAC, response->ethernet.ODA, sizeof (session->EVSE_MAC)))
++			{
++				/* not meant for us */
++				continue;
++			}
+ 			slac_debug (session, 0, __func__, "<-- CM_ATTEN_CHAR.RSP");
+ 
+ #if SLAC_DEBUG
+@@ -105,9 +121,16 @@ signed evse_cm_atten_char (struct session * session, struct channel * channel, s
+ 
+ #endif
+ 
++			channel->capture = CHANNEL_TIMEOUT;
+ 			return (0);
+ 		}
+ 	}
++	attempt++;
++	if (attempt < 3)
++	{
++		goto again;
++	}
++	channel->capture = CHANNEL_TIMEOUT;
+ 	return (slac_debug (session, session->exit, __func__, "<-- CM_ATTEN_CHAR.RSP ?"));
+ }
+ 
+diff --git a/slac/evse_cm_mnbc_sound.c b/slac/evse_cm_mnbc_sound.c
+index 9c637dd6..32eb1300 100644
+--- a/slac/evse_cm_mnbc_sound.c
++++ b/slac/evse_cm_mnbc_sound.c
+@@ -91,6 +91,7 @@ signed evse_cm_mnbc_sound (struct session * session, struct channel * channel, s
+ 	{
+ 		slac_debug (session, 1, __func__, CANT_START_TIMER);
+ 	}
++	channel->timeout = 100;
+ 	while ((length = readpacket (channel, message, sizeof (* message))) >= 0)
+ 	{
+ 		struct homeplug * homeplug = (struct homeplug *) (message);
+@@ -110,7 +111,7 @@ signed evse_cm_mnbc_sound (struct session * session, struct channel * channel, s
+ 			struct cm_mnbc_sound_indicate * indicate = (struct cm_mnbc_sound_indicate *) (message);
+ 			if (! memcmp (session->RunID, indicate->MSVarField.RunID, sizeof (session->RunID)))
+ 			{
+-				slac_debug (session, 0, __func__, "<-- CM_MNBC_SOUND.IND (%d)", sounds);
++				slac_debug (session, 0, __func__, "<-- CM_MNBC_SOUND.IND (%d) Count %d", sounds, indicate->MSVarField.CNT);
+ 
+ #if SLAC_DEBUG
+ 
+diff --git a/slac/evse_cm_set_key.c b/slac/evse_cm_set_key.c
+index de340fc1..703305b7 100644
+--- a/slac/evse_cm_set_key.c
++++ b/slac/evse_cm_set_key.c
+@@ -145,6 +145,7 @@ signed evse_cm_set_key (struct session * session, struct channel * channel, stru
+ 
+ #endif
+ 
++	channel->timeout = SLAC_TIMEOUT;
+ 	if (sendpacket (channel, request, sizeof (* request)) <= 0)
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+diff --git a/slac/evse_cm_slac_match.c b/slac/evse_cm_slac_match.c
+index 4f07177e..c3a30cc9 100644
+--- a/slac/evse_cm_slac_match.c
++++ b/slac/evse_cm_slac_match.c
+@@ -60,6 +60,7 @@
+ 
+ #include <stdio.h>
+ #include <string.h>
++#include <pthread.h>
+ 
+ #include "../ether/channel.h"
+ #include "../tools/memory.h"
+@@ -67,15 +68,36 @@
+ #include "../tools/flags.h"
+ #include "../slac/slac.h"
+ 
++static pthread_mutex_t match_muetx = PTHREAD_MUTEX_INITIALIZER;
++
+ signed evse_cm_slac_match (struct session * session, struct channel * channel, struct message * message)
+ 
+ {
+ 	struct cm_slac_match_request * request = (struct cm_slac_match_request *) (message);
+ 	struct cm_slac_match_confirm * confirm = (struct cm_slac_match_confirm *) (message);
++	extern volatile unsigned match_received;
++	channel->timeout = 1000;
+ 	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_SLAC_MATCH | MMTYPE_REQ)) > 0)
+ 	{
+ 		if (! memcmp (session->RunID, request->MatchVarField.RunID, sizeof (session->RunID)))
+ 		{
++			if (memcmp (session->EVSE_MAC, request->ethernet.ODA, sizeof (session->EVSE_MAC)))
++			{
++				/* not meant for us */
++				continue;
++			}
++
++			pthread_mutex_unlock(&match_muetx);
++			if (! match_received)
++			{
++				match_received = true;
++			}
++			else
++			{
++				pthread_mutex_unlock(&match_muetx);
++				return (slac_debug (session, 0, __func__, "<-- CM_SLAC_MATCH.REQ - But we are already matched"));
++			}
++			pthread_mutex_unlock(&match_muetx);
+ 			slac_debug (session, 0, __func__, "<-- CM_SLAC_MATCH.REQ");
+ 			memcpy (session->PEV_ID, request->MatchVarField.PEV_ID, sizeof (session->PEV_ID));
+ 			memcpy (session->PEV_MAC, request->MatchVarField.PEV_MAC, sizeof (session->PEV_MAC));
+diff --git a/slac/evse_cm_slac_param.c b/slac/evse_cm_slac_param.c
+index a14f5904..77ccd7e3 100644
+--- a/slac/evse_cm_slac_param.c
++++ b/slac/evse_cm_slac_param.c
+@@ -87,6 +87,7 @@
+ 
+ #include <stdio.h>
+ #include <string.h>
++#include <pthread.h>
+ 
+ #include "../ether/channel.h"
+ #include "../tools/types.h"
+@@ -95,20 +96,45 @@
+ #include "../tools/memory.h"
+ #include "../slac/slac.h"
+ 
++static pthread_mutex_t slac_lock = PTHREAD_MUTEX_INITIALIZER;
++static volatile struct session *print_owner = NULL;
++
+ signed evse_cm_slac_param (struct session * session, struct channel * channel, struct message * message)
+ 
+ {
+ 	extern byte const broadcast [ETHER_ADDR_LEN];
+ 	struct cm_slac_param_request * request = (struct cm_slac_param_request *) (message);
+ 	struct cm_slac_param_confirm * confirm = (struct cm_slac_param_confirm *) (message);
++	struct session * session_tmp;
++	channel->timeout = SLAC_TIMEOUT;
+ 	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_SLAC_PARAM | MMTYPE_REQ)) > 0)
+ 	{
+-		slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.REQ");
++		unsigned ev_taken = 0;
++		pthread_mutex_lock(&slac_lock);
++		session_tmp = session;
++		do
++		{
++			if (((! memcmp(session_tmp->PEV_MAC, request->ethernet.OSA, sizeof(session_tmp->PEV_MAC))) ||
++				 (! memcmp(session_tmp->RunID, request->RunID, sizeof(session_tmp->RunID)))))
++			{
++				ev_taken = 1;
++				break;
++			}
++			session_tmp = session_tmp->next;
++		} while (session_tmp != session);
++		if (ev_taken)
++		{
++			pthread_mutex_unlock(&slac_lock);
++			continue;
++		}
++		char str [256];
++		slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.REQ (PEV_MAC %s)", HEXSTRING (str, request->ethernet.OSA));
+ 		session->APPLICATION_TYPE = request->APPLICATION_TYPE;
+ 		session->SECURITY_TYPE = request->SECURITY_TYPE;
+ 		memcpy (session->PEV_MAC, request->ethernet.OSA, sizeof (session->PEV_MAC));
+ 		memcpy (session->FORWARDING_STA, request->ethernet.OSA, sizeof (session->FORWARDING_STA));
+ 		memcpy (session->RunID, request->RunID, sizeof (session->RunID));
++		pthread_mutex_unlock(&slac_lock);
+ 
+ #if SLAC_DEBUG
+ 
+@@ -149,9 +175,28 @@ signed evse_cm_slac_param (struct session * session, struct channel * channel, s
+ 		{
+ 			return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 		}
++		if (print_owner == session)
++		{
++			pthread_mutex_lock(&slac_lock);
++			print_owner = NULL;
++			pthread_mutex_unlock(&slac_lock);
++		}
+ 		return (0);
+ 	}
+-	return (slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.REQ ?"));
++	if (! print_owner)
++	{
++		pthread_mutex_lock(&slac_lock);
++		print_owner = session;
++		pthread_mutex_unlock(&slac_lock);
++	}
++	if (print_owner == session)
++	{
++		return (slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.REQ ?"));
++	}
++	else
++	{
++		return -1;
++	}
+ }
+ 
+ #endif
+diff --git a/slac/evse_cm_start_atten_char.c b/slac/evse_cm_start_atten_char.c
+index 7d0cbf34..05cb8591 100644
+--- a/slac/evse_cm_start_atten_char.c
++++ b/slac/evse_cm_start_atten_char.c
+@@ -57,18 +57,29 @@
+ #define EVSE_CM_START_ATTEN_CHAR_SOURCE
+ 
+ #include <string.h>
++#include <sys/time.h>
+ 
+ #include "../ether/channel.h"
+ #include "../tools/memory.h"
+ #include "../tools/error.h"
+ #include "../tools/flags.h"
++#include "../tools/timer.h"
+ #include "../slac/slac.h"
+ 
+ signed evse_cm_start_atten_char (struct session * session, struct channel * channel, struct message * message)
+ 
+ {
+ 	struct cm_start_atten_char_indicate * indicate = (struct cm_start_atten_char_indicate *) (message);
+-	if (readmessage (channel, message, HOMEPLUG_MMV, (CM_START_ATTEN_CHAR | MMTYPE_IND)) > 0)
++	signed timeout_old = channel->timeout;
++	struct timeval ts;
++	struct timeval tc;
++	signed timer = TT_MATCH_SEQUENCE_MS;
++	if (gettimeofday (& ts, NULL) == - 1)
++	{
++		slac_debug (session, 1, __func__, CANT_START_TIMER);
++	}
++	channel->timeout = timer;
++	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_START_ATTEN_CHAR | MMTYPE_IND)) > 0)
+ 	{
+ 		if (! memcmp (session->RunID, indicate->ACVarField.RunID, sizeof (session->RunID)))
+ 		{
+@@ -105,9 +116,23 @@ signed evse_cm_start_atten_char (struct session * session, struct channel * chan
+ 				slac_debug (session, session->exit, __func__, "%s: RESP_TYPE", __func__);
+ 			}
+ 			memcpy (session->FORWARDING_STA, indicate->ACVarField.FORWARDING_STA, sizeof (session->FORWARDING_STA));
++			channel->timeout = timeout_old;
+ 			return (0);
+ 		}
++		if (gettimeofday (& tc, NULL) == - 1)
++		{
++			slac_debug (session, 1, __func__, CANT_RESET_TIMER);
++		}
++		if ((MILLISECONDS (ts, tc) < timer))
++		{
++			channel->timeout = timer - MILLISECONDS (ts, tc);
++		}
++		else
++		{
++			break;
++		}
+ 	}
++	channel->timeout = timeout_old;
+ 	return (slac_debug (session, session->exit, __func__, "CM_START_ATTEN_CHAR.IND ?"));
+ }
+ 
+diff --git a/slac/pev.c b/slac/pev.c
+index 4feeb349..e45fca5d 100644
+--- a/slac/pev.c
++++ b/slac/pev.c
+@@ -99,6 +99,7 @@
+ #include "../tools/error.h"
+ #include "../tools/config.h"
+ #include "../tools/permissions.h"
++#include "../tools/timer.h"
+ #include "../ether/channel.h"
+ #include "../slac/slac.h"
+ 
+@@ -167,10 +168,7 @@
+ #define PROFILE "pev.ini"
+ #define SECTION "default"
+ 
+-#define PEV_STATE_NONE 0
+-#define PEV_STATE_DISCONNECTED 1
+-#define PEV_STATE_UNMATCHED 2
+-#define PEV_STATE_MATCHED 3
++#define MAX_NUM_SESSIONS 5
+ 
+ #define PEV_VID "0000000000000000000000000000000000" // VehicleIdentifier
+ #define PEV_NMK "50D3E4933F855B7040784DF815AA8DB7"   // HomePlugAV
+@@ -267,11 +265,20 @@ static signed identifier (struct session * session, struct channel * channel)
+ static void DisconnectedState (struct session * session, struct channel * channel, struct message * message)
+ 
+ {
++	struct session * session_tmp = session;
+ 	slac_session (session);
+ 	slac_debug (session, 0, __func__, "Probing ...");
+ 	memincr (session->RunID, sizeof (session->RunID));
+-	while (pev_cm_slac_param (session, channel, message));
+-	session->state = PEV_STATE_UNMATCHED;
++	do
++	{
++		memset (session_tmp->EVSE_MAC, 0, sizeof (session_tmp->EVSE_MAC));
++		session_tmp = session_tmp->next;
++	} while (session_tmp != session);
++	while (pev_cm_slac_param (session, channel, message))
++	{
++		SLEEP (1000);
++	}
++	channel->timeout = 100;
+ 	return;
+ }
+ 
+@@ -427,16 +434,17 @@ int main (int argc, char const * argv [])
+ 		"x\texit on error",
+ 		(char const *) (0)
+ 	};
+-	struct session session;
++	struct session sessions[MAX_NUM_SESSIONS];
+ 	struct message message;
+ 	char const * profile = PROFILE;
+ 	char const * section = SECTION;
++	signed i;
+ 	signed c;
+ 
+ 	initchannel (&channel);
+ 	desuid ();
+ 
+-	memset (& session, 0, sizeof (session));
++	memset (& sessions, 0, sizeof (sessions));
+ 	memset (& message, 0, sizeof (message));
+ 	channel.timeout = SLAC_TIMEOUT;
+ 	if (getenv (PLCDEVICE))
+@@ -462,10 +470,10 @@ int main (int argc, char const * argv [])
+ 			configure ();
+ 			return (0);
+ 		case 'C':
+-			_setbits (session.flags, SLAC_COMPARE);
++			_setbits (sessions[0].flags, SLAC_COMPARE);
+ 			break;
+ 		case 'd':
+-			_setbits (session.flags, (SLAC_VERBOSE | SLAC_SESSION));
++			_setbits (sessions[0].flags, (SLAC_VERBOSE | SLAC_SESSION));
+ 			break;
+ 		case 'i':
+ 
+@@ -481,7 +489,7 @@ int main (int argc, char const * argv [])
+ 
+ 			break;
+ 		case 'K':
+-			_setbits (session.flags, SLAC_SOUNDONLY);
++			_setbits (sessions[0].flags, SLAC_SOUNDONLY);
+ 			break;
+ 		case 'l':
+ 			state = PEV_STATE_DISCONNECTED;
+@@ -494,7 +502,7 @@ int main (int argc, char const * argv [])
+ 			break;
+ 		case 'q':
+ 			_setbits (channel.flags, CHANNEL_SILENCE);
+-			_setbits (session.flags, SLAC_SILENCE);
++			_setbits (sessions[0].flags, SLAC_SILENCE);
+ 			break;
+ 		case 't':
+ 			channel.timeout = (unsigned) (uintspec (optarg, 0, UINT_MAX));
+@@ -503,7 +511,7 @@ int main (int argc, char const * argv [])
+ 			_setbits (channel.flags, CHANNEL_VERBOSE);
+ 			break;
+ 		case 'x':
+-			session.exit = session.exit? 0: 1;
++			sessions[0].exit = sessions[0].exit? 0: 1;
+ 			break;
+ 		default:
+ 			break;
+@@ -513,37 +521,46 @@ int main (int argc, char const * argv [])
+ 	argv += optind;
+ 	if (argc)
+ 	{
+-		slac_debug (& session, 1, __func__, ERROR_TOOMANY);
++		slac_debug (& sessions[0], 1, __func__, ERROR_TOOMANY);
+ 	}
+ 	openchannel (& channel);
+-	identifier (& session, & channel);
+-	initialize (& session, profile, section);
+-	if (_allclr (session.flags, SLAC_SOUNDONLY))
++	for (i = 0; i < MAX_NUM_SESSIONS; i++)
++	{
++		identifier (& sessions[i], & channel);
++		initialize (& sessions[i], profile, section);
++		sessions[i].next = &sessions[(i + 1) % MAX_NUM_SESSIONS];
++		sessions[i].prev = &sessions[((i - 1) + MAX_NUM_SESSIONS) % MAX_NUM_SESSIONS];
++	}
++	if (_allclr (sessions[0].flags, SLAC_SOUNDONLY))
+ 	{
+-		if (pev_cm_set_key (& session, & channel, & message))
++		if (pev_cm_set_key (& sessions[0], & channel, & message))
+ 		{
+-			slac_debug (& session, 1, __func__, "Can't set key");
++			slac_debug (& sessions[0], 1, __func__, "Can't set key");
+ 		}
+-		sleep (session.settletime);
++		sleep (sessions[0].settletime);
+ 	}
+-	while (session.state)
++	while (sessions[0].state)
+ 	{
+-		if (session.state == PEV_STATE_DISCONNECTED)
++		if (sessions[0].state == PEV_STATE_DISCONNECTED)
+ 		{
+-			DisconnectedState (& session, & channel, & message);
++			for (i = 0; i < MAX_NUM_SESSIONS; i++)
++			{
++				sessions[i].state = PEV_STATE_DISCONNECTED;
++			}
++			DisconnectedState (& sessions[0], & channel, & message);
+ 			continue;
+ 		}
+-		if (session.state == PEV_STATE_UNMATCHED)
++		if (sessions[0].state == PEV_STATE_UNMATCHED)
+ 		{
+-			UnmatchedState (& session, & channel, & message);
++			UnmatchedState (& sessions[0], & channel, & message);
+ 			continue;
+ 		}
+-		if (session.state == PEV_STATE_MATCHED)
++		if (sessions[0].state == PEV_STATE_MATCHED)
+ 		{
+-			MatchedState (& session, & channel, & message);
++			MatchedState (& sessions[0], & channel, & message);
+ 			continue;
+ 		}
+-		slac_debug (& session, 1, __func__, "Illegal state!");
++		slac_debug (& sessions[0], 1, __func__, "Illegal state!");
+ 	}
+ 	closechannel (& channel);
+ 	return (0);
+diff --git a/slac/pev_cm_atten_char.c b/slac/pev_cm_atten_char.c
+index 563816cf..7f8807ee 100644
+--- a/slac/pev_cm_atten_char.c
++++ b/slac/pev_cm_atten_char.c
+@@ -55,27 +55,74 @@
+ #define PEV_CM_ATTEN_CHAR_SOURCE
+ 
+ #include <string.h>
++#include <sys/time.h>
+ 
+ #include "../ether/channel.h"
+ #include "../tools/memory.h"
+ #include "../tools/error.h"
+ #include "../tools/flags.h"
++#include "../tools/timer.h"
+ #include "../slac/slac.h"
+ 
+ signed pev_cm_atten_char (struct session * session, struct channel * channel, struct message * message)
+ 
+ {
++	struct timeval ts;
++	struct timeval tc;
++	signed timer = TT_EV_ATTEN_RESULTS_MS - TT_EVSE_MATCH_MNBC_MS;
+ 	struct cm_atten_char_indicate * indicate = (struct cm_atten_char_indicate *) (message);
+ 	struct cm_atten_char_response * response = (struct cm_atten_char_response *) (message);
++	struct session * session_tmp;
++	unsigned received_all;
++	if (gettimeofday (& ts, NULL) == - 1)
++	{
++		slac_debug (session, 1, __func__, CANT_START_TIMER);
++	}
++	channel->timeout = timer;
++	session_tmp = session;
++	do
++	{
++		session_tmp->NUM_SOUNDS = 0;
++		session_tmp->NumGroups = 0;
++		memset(session_tmp->AAG, 0, sizeof(session_tmp->AAG));
++		session_tmp = session_tmp->next;
++	} while (session_tmp != session);
+ 	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_ATTEN_CHAR | MMTYPE_IND)) > 0)
+ 	{
+ 		if (! memcmp (session->RunID, indicate->ACVarField.RunID, sizeof (session->RunID)))
+ 		{
+-			slac_debug (session, 0, __func__, "<-- CM_ATTEN_CHAR.IND");
+-			memcpy (session->EVSE_MAC, indicate->ethernet.OSA, sizeof (session->EVSE_MAC));
+-			session->NUM_SOUNDS = indicate->ACVarField.NUM_SOUNDS;
+-			session->NumGroups = indicate->ACVarField.ATTEN_PROFILE.NumGroups;
+-			memcpy (session->AAG, indicate->ACVarField.ATTEN_PROFILE.AAG, indicate->ACVarField.ATTEN_PROFILE.NumGroups);
++			session_tmp = session;
++			do
++			{
++				if (session_tmp->state == PEV_STATE_UNMATCHED)
++				{
++					if (! memcmp (session_tmp->EVSE_MAC, indicate->ethernet.OSA, sizeof (session_tmp->EVSE_MAC)))
++					{
++						break;
++					}
++				}
++				else
++				{
++					/*
++					 * [V2G3-A09-33]
++					 * If a CM_ATTEN_CHAR.IND is received and its origin is an EVSE that has not sent a
++					 * CM_SLAC_PARM.CNF before, the message shall be processed and not ignored.
++					 */
++					session_tmp->state = PEV_STATE_UNMATCHED;
++					memcpy (session_tmp->EVSE_MAC, indicate->ethernet.OSA, sizeof (session_tmp->EVSE_MAC));
++					break;
++				}
++				session_tmp = session_tmp->next;
++			} while (session_tmp != session);
++			if (memcmp (session_tmp->EVSE_MAC, indicate->ethernet.OSA, sizeof (session_tmp->EVSE_MAC)))
++			{
++				continue;
++			}
++			char str [256];
++			slac_debug (session, 0, __func__, "<-- CM_ATTEN_CHAR.IND (session.EVSE_MAC %s)", HEXSTRING (str, session_tmp->EVSE_MAC));
++			session_tmp->NUM_SOUNDS = indicate->ACVarField.NUM_SOUNDS;
++			session_tmp->NumGroups = indicate->ACVarField.ATTEN_PROFILE.NumGroups;
++			memcpy (session_tmp->AAG, indicate->ACVarField.ATTEN_PROFILE.AAG, indicate->ACVarField.ATTEN_PROFILE.NumGroups);
+ 
+ #if SLAC_DEBUG
+ 
+@@ -97,7 +144,7 @@ signed pev_cm_atten_char (struct session * session, struct channel * channel, st
+ 
+ 			slac_debug (session, 0, __func__, "--> CM_ATTEN_CHAR.RSP");
+ 			memset (message, 0, sizeof (* message));
+-			EthernetHeader (& response->ethernet, session->EVSE_MAC, channel->host, channel->type);
++			EthernetHeader (& response->ethernet, session_tmp->EVSE_MAC, channel->host, channel->type);
+ 			HomePlugHeader1 (& response->homeplug, HOMEPLUG_MMV, (CM_ATTEN_CHAR | MMTYPE_RSP));
+ 			response->APPLICATION_TYPE = session->APPLICATION_TYPE;
+ 			response->SECURITY_TYPE = session->SECURITY_TYPE;
+@@ -110,9 +157,55 @@ signed pev_cm_atten_char (struct session * session, struct channel * channel, st
+ 			{
+ 				return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 			}
++			session_tmp = session;
++			received_all = 1;
++			do
++			{
++				if ((session_tmp->state == PEV_STATE_UNMATCHED) && (! session_tmp->NumGroups))
++				{
++					received_all = 0;
++					break;
++				}
++				session_tmp = session_tmp->next;
++			} while (session_tmp != session);
++			if (gettimeofday (& tc, NULL) == - 1)
++			{
++				slac_debug (session, 1, __func__, CANT_RESET_TIMER);
++			}
++			if ((MILLISECONDS (ts, tc) < timer))
++			{
++				channel->timeout = timer - MILLISECONDS (ts, tc);
++				if (received_all && channel->timeout > 250)
++				{
++					channel->timeout = 250;
++					timer = MILLISECONDS (ts, tc) + 250;
++				}
++				continue;
++			}
+ 			return (0);
+ 		}
++		if (gettimeofday (& tc, NULL) == - 1)
++		{
++			slac_debug (session, 1, __func__, CANT_RESET_TIMER);
++		}
++		if ((MILLISECONDS (ts, tc) < timer))
++		{
++			channel->timeout = timer - MILLISECONDS (ts, tc);
++		}
++		else
++		{
++			break;
++		}
+ 	}
++	session_tmp = session;
++	do
++	{
++		if ((session_tmp->state == PEV_STATE_UNMATCHED) && (session_tmp->NumGroups))
++		{
++			return (0);
++		}
++		session_tmp = session_tmp->next;
++	} while (session_tmp != session);
+ 	return (slac_debug (session, session->exit, __func__, "<-- CM_ATTEN_CHAR.IND ?"));
+ }
+ 
+diff --git a/slac/pev_cm_set_key.c b/slac/pev_cm_set_key.c
+index e7cdabe3..47ee58e0 100644
+--- a/slac/pev_cm_set_key.c
++++ b/slac/pev_cm_set_key.c
+@@ -145,6 +145,7 @@ signed pev_cm_set_key (struct session * session, struct channel * channel, struc
+ 
+ #endif
+ 
++	channel->timeout = SLAC_TIMEOUT;
+ 	if (sendpacket (channel, request, sizeof (* request)) <= 0)
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+diff --git a/slac/pev_cm_slac_match.c b/slac/pev_cm_slac_match.c
+index a2fcadbb..2d7357c1 100644
+--- a/slac/pev_cm_slac_match.c
++++ b/slac/pev_cm_slac_match.c
+@@ -68,7 +68,9 @@ signed pev_cm_slac_match (struct session * session, struct channel * channel, st
+ {
+ 	struct cm_slac_match_request * request = (struct cm_slac_match_request *) (message);
+ 	struct cm_slac_match_confirm * confirm = (struct cm_slac_match_confirm *) (message);
+-	slac_debug (session, 0, __func__, "--> CM_SLAC_MATCH.REQ");
++	unsigned attempt = 0;
++again:
++	slac_debug (session, 0, __func__, "--> CM_SLAC_MATCH.REQ (%u)", attempt);
+ 	memset (message, 0, sizeof (* message));
+ 	EthernetHeader (& request->ethernet, session->EVSE_MAC, channel->host, channel->type);
+ 	HomePlugHeader1 (& request->homeplug, HOMEPLUG_MMV, (CM_SLAC_MATCH | MMTYPE_REQ));
+@@ -83,7 +85,8 @@ signed pev_cm_slac_match (struct session * session, struct channel * channel, st
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+-	if (readmessage (channel, message, HOMEPLUG_MMV, (CM_SLAC_MATCH | MMTYPE_CNF)) > 0)
++	channel->timeout = TT_MATCH_RESPONSE_MS / 2;
++	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_SLAC_MATCH | MMTYPE_CNF)) > 0)
+ 	{
+ 		if (! memcmp (session->RunID, confirm->MatchVarField.RunID, sizeof (session->RunID)))
+ 		{
+@@ -111,9 +114,16 @@ signed pev_cm_slac_match (struct session * session, struct channel * channel, st
+ 			memcpy (session->EVSE_ID, confirm->MatchVarField.EVSE_ID, sizeof (session->EVSE_ID));
+ 			memcpy (session->NMK, confirm->MatchVarField.NMK, sizeof (session->NMK));
+ 			memcpy (session->NID, confirm->MatchVarField.NID, sizeof (session->NID));
++			channel->timeout = 1000;
+ 			return (0);
+ 		}
+ 	}
++	attempt++;
++	if (attempt < 3)
++	{
++		goto again;
++	}
++	channel->timeout = 1000;
+ 	return (slac_debug (session, session->exit, __func__, "<-- CM_SLAC_MATCH.CNF ?"));
+ }
+ 
+diff --git a/slac/pev_cm_slac_param.c b/slac/pev_cm_slac_param.c
+index 0f524133..1428e31c 100644
+--- a/slac/pev_cm_slac_param.c
++++ b/slac/pev_cm_slac_param.c
+@@ -83,19 +83,26 @@
+ 
+ #include <string.h>
+ #include <errno.h>
++#include <sys/time.h>
+ 
+ #include "../ether/channel.h"
+ #include "../tools/memory.h"
+ #include "../tools/error.h"
+ #include "../tools/flags.h"
++#include "../tools/timer.h"
+ #include "../slac/slac.h"
+ 
+ signed pev_cm_slac_param (struct session * session, struct channel * channel, struct message * message)
+ 
+ {
++	struct timeval ts;
++	struct timeval tc;
++	signed timer = TT_MATCH_RESPONSE_MS;
+ 	extern byte const broadcast [ETHER_ADDR_LEN];
+ 	struct cm_slac_param_request * request = (struct cm_slac_param_request *) (message);
+ 	struct cm_slac_param_confirm * confirm = (struct cm_slac_param_confirm *) (message);
++	struct session * session_tmp = session;
++	char string [256];
+ 	slac_debug (session, 0, __func__, "--> CM_SLAC_PARAM.REQ");
+ 	memset (message, 0, sizeof (* message));
+ 	EthernetHeader (& request->ethernet, broadcast, channel->host, channel->type);
+@@ -108,11 +115,44 @@ signed pev_cm_slac_param (struct session * session, struct channel * channel, st
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
++	if (gettimeofday (& ts, NULL) == - 1)
++	{
++		slac_debug (session, 1, __func__, CANT_START_TIMER);
++	}
++	channel->timeout = timer;
++	channel->capture = CHANNEL_TIMEOUT;
+ 	while (readmessage (channel, message, HOMEPLUG_MMV, (CM_SLAC_PARAM | MMTYPE_CNF)) > 0)
+ 	{
+ 		if (! memcmp (session->RunID, confirm->RunID, sizeof (session->RunID)))
+ 		{
+-			slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.CNF");
++			struct session * session_tmp_2 = session;
++			unsigned is_duplicate = 0;
++			do
++			{
++				if (! memcmp(session_tmp_2->EVSE_MAC, confirm->ethernet.OSA, sizeof (session_tmp->EVSE_MAC)))
++				{
++					is_duplicate = 1;
++					break;
++				}
++				session_tmp_2 = session_tmp_2->next;
++			} while (session_tmp_2 != session);
++			if (is_duplicate)
++			{
++				if (gettimeofday (& tc, NULL) == - 1)
++				{
++					slac_debug (session, 1, __func__, CANT_RESET_TIMER);
++				}
++				if ((MILLISECONDS (ts, tc) < timer))
++				{
++					channel->timeout = timer - MILLISECONDS (ts, tc);
++				}
++				else
++				{
++					break;
++				}
++				continue;
++			}
++			slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.CNF (EVSE.MAC %s)", HEXSTRING (string, confirm->ethernet.OSA));
+ 			if (confirm->APPLICATION_TYPE != session->APPLICATION_TYPE)
+ 			{
+ 				slac_debug (session, session->exit, __func__, "Unexpected APPLICATION_TYPE");
+@@ -133,7 +173,6 @@ signed pev_cm_slac_param (struct session * session, struct channel * channel, st
+ 
+ 			if (_anyset (session->flags, SLAC_VERBOSE))
+ 			{
+-				char string [256];
+ 				slac_debug (session, 0, __func__, "CM_SLAC_PARAM.CNF.MSOUND_TARGET %s", HEXSTRING (string, confirm->MSOUND_TARGET));
+ 				slac_debug (session, 0, __func__, "CM_SLAC_PARAM.CNF.NUM_SOUNDS %d", confirm->NUM_SOUNDS);
+ 				slac_debug (session, 0, __func__, "CM_SLAC_PARAM.CNF.TIME_OUT %d", confirm->TIME_OUT);
+@@ -147,13 +186,51 @@ signed pev_cm_slac_param (struct session * session, struct channel * channel, st
+ 
+ #endif
+ 
+-			memcpy (session->FORWARDING_STA, confirm->FORWARDING_STA, sizeof (session->FORWARDING_STA));
+-			memcpy (session->MSOUND_TARGET, confirm->MSOUND_TARGET, sizeof (session->MSOUND_TARGET));
+-			session->NUM_SOUNDS = confirm->NUM_SOUNDS;
+-			session->TIME_OUT = confirm->TIME_OUT;
+-			session->RESP_TYPE = confirm->RESP_TYPE;
++			memcpy (session_tmp->FORWARDING_STA, confirm->FORWARDING_STA, sizeof (session_tmp->FORWARDING_STA));
++			memcpy (session_tmp->MSOUND_TARGET, confirm->MSOUND_TARGET, sizeof (session_tmp->MSOUND_TARGET));
++			memcpy (session_tmp->EVSE_MAC, confirm->ethernet.OSA, sizeof (session_tmp->EVSE_MAC));
++			session_tmp->NUM_SOUNDS = confirm->NUM_SOUNDS;
++			session_tmp->TIME_OUT = confirm->TIME_OUT;
++			session_tmp->RESP_TYPE = confirm->RESP_TYPE;
++			session_tmp->state = PEV_STATE_UNMATCHED;
++			session_tmp = session_tmp->next;
++			if (session_tmp == session)
++			{
++				channel->timeout = CHANNEL_TIMEOUT;
++				channel->capture = CHANNEL_TIMEOUT;
++				return (0);
++			}
++			if (gettimeofday (& tc, NULL) == - 1)
++			{
++				slac_debug (session, 1, __func__, CANT_RESET_TIMER);
++			}
++			if ((MILLISECONDS (ts, tc) < timer) && (session_tmp != session))
++			{
++				channel->timeout = timer - MILLISECONDS (ts, tc);
++				continue;
++			}
++			channel->timeout = CHANNEL_TIMEOUT;
++			channel->capture = CHANNEL_TIMEOUT;
+ 			return (0);
+ 		}
++		if (gettimeofday (& tc, NULL) == - 1)
++		{
++			slac_debug (session, 1, __func__, CANT_RESET_TIMER);
++		}
++		if ((MILLISECONDS (ts, tc) < timer))
++		{
++			channel->timeout = timer - MILLISECONDS (ts, tc);
++		}
++		else
++		{
++			break;
++		}
++	}
++	if (session_tmp != session)
++	{
++		channel->timeout = CHANNEL_TIMEOUT;
++		channel->capture = CHANNEL_TIMEOUT;
++		return (0);
+ 	}
+ 	return (slac_debug (session, 0, __func__, "<-- CM_SLAC_PARAM.CNF ?"));
+ }
+diff --git a/slac/pev_cm_start_atten_char.c b/slac/pev_cm_start_atten_char.c
+index 6b82d512..8e117047 100644
+--- a/slac/pev_cm_start_atten_char.c
++++ b/slac/pev_cm_start_atten_char.c
+@@ -60,6 +60,7 @@
+ #include "../tools/types.h"
+ #include "../tools/error.h"
+ #include "../ether/channel.h"
++#include "../tools/timer.h"
+ #include "../slac/slac.h"
+ 
+ signed pev_cm_start_atten_char (struct session * session, struct channel * channel, struct message * message)
+@@ -82,6 +83,8 @@ signed pev_cm_start_atten_char (struct session * session, struct channel * chann
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+ 
++	SLEEP (session->pause);
++
+ 	/*
+ 	 *	the GreenPHY spec says to send CM_START_ATTEN.IND three times to ensure
+ 	 *	that is is received;
+@@ -93,12 +96,16 @@ signed pev_cm_start_atten_char (struct session * session, struct channel * chann
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+ 
++	SLEEP (session->pause);
++
+ 	slac_debug (session, 0, __func__, "--> CM_START_ATTEN_CHAR.IND");
+ 	if (sendmessage (channel, message, (ETHER_MIN_LEN - ETHER_CRC_LEN)) <= 0)
+ 	{
+ 		return (slac_debug (session, 1, __func__, CHANNEL_CANTSEND));
+ 	}
+ 
++	SLEEP (session->pause);
++
+ 	return (0);
+ }
+ 
+diff --git a/slac/slac.h b/slac/slac.h
+index f8ec62aa..3121bedc 100644
+--- a/slac/slac.h
++++ b/slac/slac.h
+@@ -121,6 +121,18 @@
+ #define SLAC_CM_SETKEY_CCO 0x00
+ #define SLAC_CM_SETKEY_EKS 0x01
+ 
++#define PEV_STATE_NONE 0
++#define PEV_STATE_DISCONNECTED 1
++#define PEV_STATE_UNMATCHED 2
++#define PEV_STATE_MATCHED 3
++
++#define TT_MATCH_RESPONSE_MS 200
++#define TT_MATCH_SEQUENCE_MS 400
++#define TT_EV_ATTEN_RESULTS_MS 1200
++#define TT_EV_MATCH_SESSION_MS 500
++#define TT_EVSE_MATCH_SESSION_MS (10 * 1000)
++#define TT_EVSE_MATCH_MNBC_MS 600
++
+ /*====================================================================*
+  *   messages;
+  *--------------------------------------------------------------------*/
+diff --git a/slac/slac_connect.c b/slac/slac_connect.c
+index 15c736f3..a4fce573 100644
+--- a/slac/slac_connect.c
++++ b/slac/slac_connect.c
+@@ -54,6 +54,8 @@
+ #ifndef SLAC_AVERAGE_SOURCE
+ #define SLAC_AVERAGE_SOURCE
+ 
++#include <string.h>
++
+ #include "../tools/error.h"
+ #include "../tools/flags.h"
+ #include "../tools/memory.h"
+@@ -62,36 +64,62 @@
+ signed slac_connect (struct session * session)
+ 
+ {
+-	unsigned group = 0;
+-	unsigned total = 0;
+-	if (session->NumGroups > SIZEOF (session->AAG))
+-	{
+-		return (slac_debug (session, session->exit, __func__, "Too much data to analyse!"));
+-	}
+-	if (session->NumGroups > 0)
++	unsigned group;
++	unsigned total;
++	unsigned best = 0;
++	char string [256];
++	struct session * best_session = NULL;
++	struct session * session_tmp = session;
++	do
+ 	{
+-		char string [512];
+-		while (group < session->NumGroups)
++		if (session_tmp->state != PEV_STATE_UNMATCHED)
+ 		{
+-			total += session->AAG [group];
+-			group++;
++
+ 		}
+-		total /= group;
+-		if (total > session->limit)
++		else if (session_tmp->NumGroups > SIZEOF (session->AAG))
+ 		{
+-			char string [512];
+-			slac_debug (session, 0, __func__, "Average attenuation (%u) more than limit (%u) frow %d groups", total, session->limit, group);
+-			slac_debug (session, 0, __func__, "%s", HEXSTRING (string, session->AAG));
+-			return (- 1);
++			slac_debug (session, session->exit, __func__, "Too much data to analyse! (session.EVSE_MAC %s)", HEXSTRING (string, session_tmp->EVSE_MAC));
+ 		}
+-		if (total > 0)
++		if (session_tmp->NumGroups > 0)
+ 		{
+-			slac_debug (session, 0, __func__, "Average attenuation (%u) less than limit (%u) from %d groups", total, session->limit, group);
+-			slac_debug (session, 0, __func__, "%s", HEXSTRING (string, session->AAG));
+-			return (0);
++			group = 0;
++			total = 0;
++			char string [512];
++			while (group < session_tmp->NumGroups)
++			{
++				total += session_tmp->AAG [group];
++				group++;
++			}
++			total /= group;
++			if (total > session_tmp->limit)
++			{
++				char string [512];
++				slac_debug (session, 0, __func__, "Average attenuation (%u) more than limit (%u) frow %d groups (session.EVSE_MAC %s)",
++							total, session_tmp->limit, group, HEXSTRING (string, session_tmp->EVSE_MAC));
++				slac_debug (session, 0, __func__, "%s", HEXSTRING (string, session_tmp->AAG));
++			}
++			else if (total > 0)
++			{
++				slac_debug (session, 0, __func__, "Average attenuation (%u) less than limit (%u) from %d groups (session.EVSE_MAC %s)",
++							total, session_tmp->limit, group, HEXSTRING (string, session_tmp->EVSE_MAC));
++				slac_debug (session, 0, __func__, "%s", HEXSTRING (string, session_tmp->AAG));
++				if ((! best) || ((best != 0) && (total < best)))
++				{
++					best = total;
++					best_session = session_tmp;
++				}
++			}
+ 		}
++		session_tmp = session_tmp->next;
++	} while (session_tmp != session);
++	if (! best_session)
++	{
++		return (slac_debug (session, session->exit, __func__, "Match not found"));
+ 	}
+-	return (slac_debug (session, session->exit, __func__, "Nothing to analyse"));
++	memcpy (session->EVSE_MAC, best_session->EVSE_MAC, sizeof (session->EVSE_MAC));
++	slac_debug (session, 0, __func__, "Best match: session.EVSE_MAC %s Average attenuation (%u)",
++				HEXSTRING (string, session_tmp->EVSE_MAC), best);
++	return (0);
+ }
+ 
+ #endif
+diff --git a/slac/slac_debug.c b/slac/slac_debug.c
+index 7b4de586..ac5ff8f8 100644
+--- a/slac/slac_debug.c
++++ b/slac/slac_debug.c
+@@ -58,12 +58,16 @@
+ #include <stdlib.h>
+ #include <stdarg.h>
+ #include <string.h>
++#include <pthread.h>
++#include <sys/time.h>
+ 
+ #include "../slac/slac.h"
+ #include "../tools/types.h"
+ #include "../tools/error.h"
+ #include "../tools/flags.h"
+ 
++static pthread_mutex_t log_muetx = PTHREAD_MUTEX_INITIALIZER;
++
+ #ifdef __GNUC__
+ 
+ __attribute__ ((format (printf, 4, 5)))
+@@ -74,12 +78,15 @@ signed slac_debug (struct session * session, signed status, char const * string,
+ 
+ {
+ 	extern char const * program_name;
++	struct timeval ts;
+ 
+ 	if (_allclr (session->flags, SLAC_SILENCE))
+ 	{
++		pthread_mutex_lock(&log_muetx);
++		gettimeofday (& ts, NULL);
+ 		if ((program_name) && (* program_name))
+ 		{
+-			fprintf (stderr, "%s: ", program_name);
++			fprintf (stderr, "[%lu.%03lu] %s: %lu: ", ts.tv_sec, (ts.tv_usec / 1000), program_name, pthread_self());
+ 		}
+ 		if ((string) && (* string))
+ 		{
+@@ -94,6 +101,7 @@ signed slac_debug (struct session * session, signed status, char const * string,
+ 		}
+ 		fprintf (stderr, "\n");
+ 		fflush (stderr);
++		pthread_mutex_unlock(&log_muetx);
+ 	}
+ 	if (status)
+ 	{
+diff --git a/tools/version.c b/tools/version.c
+index 3f42eb45..5cb04cff 100644
+--- a/tools/version.c
++++ b/tools/version.c
+@@ -29,7 +29,8 @@ void version ()
+ 	printf (VERSION " ");
+ 	printf (RELEASE " ");
+ 	printf ("ISO C ");
+-	printf (COMPANY "\n");
++	printf (COMPANY " ");
++	printf (SDK_VERSION "\n");
+ 	return;
+ }
+ 
+diff --git a/tools/version.h b/tools/version.h
+index fa21978a..0ac59e89 100644
+--- a/tools/version.h
++++ b/tools/version.h
+@@ -22,6 +22,7 @@
+ #define RELEASE "OSRQCA-929"
+ #define CONTACT "https://github.com/qca/open-plc-utils"
+ #define LICENSE "Clear BSD"
++#define SDK_VERSION "SDK 3.0.1"
+ 
+ /*====================================================================*
+  *   functions;
+-- 
+2.25.1
+

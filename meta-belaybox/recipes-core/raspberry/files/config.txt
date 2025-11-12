@@ -1,0 +1,54 @@
+# For more options and information see
+# http://rpf.io/configtxt
+# Some settings may impact device functionality. See link above for details
+
+# Uncomment some or all of these to enable the optional hardware interfaces
+dtparam=i2c_arm=on
+dtparam=i2s=off
+dtparam=spi=on
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=off
+
+# Automatically load overlays for detected cameras
+camera_auto_detect=0
+
+# Automatically load overlays for detected DSI displays
+display_auto_detect=1
+
+# Enable DRM VC4 V3D driver
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+
+# Disable compensation for displays with overscan
+disable_overscan=1
+
+[pi4]
+# Run as fast as firmware / board allows
+#arm_boost=1
+
+[cm4]
+# Enable host mode on the 2711 built-in XHCI USB controller.
+# This line should be removed if the legacy DWC2 controller is required
+# (e.g. for USB device mode) or if USB support is not required.
+otg_mode=1
+dtoverlay=uart5
+dtoverlay=spi1-2cs
+dtoverlay=mcp2515-can0-spi1,oscillator=16000000,interrupt=24,spimaxfrequency=10000000
+dtoverlay=tpm-slb9670
+dtoverlay=dwc2,dr_mode=host
+dtoverlay=i2c-rtc,pcf85063,i2c_csi_dsi,addr=0x51
+dtparam=ant2
+
+[all]
+arm_64bit=0
+dtoverlay=disable-bt
+enable_uart=1
+dtoverlay=qca7000,speed=12000000
+dtoverlay=miniuart-bt
+dtoverlay=uart3
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=800 480 60 6 0 0 0
+max_usb_current=1
+disable_splash=1

@@ -1,0 +1,21 @@
+From 79b5a88315e1599767c195daebe6673fb6111ba5 Mon Sep 17 00:00:00 2001
+From: Florin Mihut <florin.mihut@pionix.de>
+Date: Thu, 25 Apr 2024 22:09:44 +0200
+Subject: [PATCH] Fix install stage
+
+Signed-off-by: Florin Mihut <florin.mihut@pionix.de>
+---
+ CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0c9877a..7ccaa79 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -31,3 +31,5 @@ if(MSVC)
+ else()
+ 	target_link_libraries(htt_util udev)
+ endif()
++
++install(TARGETS htt_util)
+\ No newline at end of file

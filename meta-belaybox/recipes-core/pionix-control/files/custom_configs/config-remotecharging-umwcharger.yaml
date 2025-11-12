@@ -1,0 +1,22 @@
+settings:
+  telemetry_enabled: false
+active_modules:
+  bsp:
+    module: MicroMegaWattBSP
+    config_module:
+      baud_rate: 115200
+      reset_gpio: 27
+      serial_port: /dev/serial0
+  remote_charging:
+    config_module:
+      base_topic_sub: everest/cloud
+      base_topic_pub: everest/cloud
+    module:
+      RemoteChargingEVSE
+    connections:
+      bsp:
+        - implementation_id: board_support
+          module_id: bsp
+      power_supply:
+        - implementation_id: dc_supply
+          module_id: bsp

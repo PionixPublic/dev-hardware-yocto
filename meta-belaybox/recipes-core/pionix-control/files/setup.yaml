@@ -1,0 +1,20 @@
+settings:
+  mqtt_everest_prefix: setup_everest
+active_modules:
+  persistent_store:
+    config_module:
+      sqlite_db_file_path: /etc/everest/setup_persistent_store.db
+    connections: {}
+    module: PersistentStore
+  setup:
+    config_module:
+      initialized_by_default: true
+      localization: true
+      online_check_host: pionix.com
+      setup_simulation: true
+      setup_wifi: true
+    connections:
+      store:
+        - implementation_id: main
+          module_id: persistent_store
+    module: Setup

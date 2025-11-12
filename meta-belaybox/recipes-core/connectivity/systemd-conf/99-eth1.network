@@ -1,0 +1,8 @@
+[Match]
+Name=eth1
+
+[Network]
+DHCP=no
+DefaultRouteOnDevice=false
+Address=192.168.4.4
+

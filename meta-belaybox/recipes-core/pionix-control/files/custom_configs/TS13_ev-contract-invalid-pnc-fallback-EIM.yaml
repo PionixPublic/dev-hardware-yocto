@@ -1,0 +1,192 @@
+settings:
+  telemetry_enabled: true
+active_modules:
+  packet_sniffer:
+    connections:
+      evse_manager:
+      - implementation_id: evse
+        module_id: evse_manager
+    module: PacketSniffer
+  iso15118_charger:
+    module: EvseV2G
+    config_module:
+      device: eth1
+      tls_security: allow
+      supported_DIN70121: false
+      supported_ISO15118_2: true
+      verify_contract_cert_chain: true
+      tls_key_logging: true
+      tls_key_logging_path: /var/everest-logs
+    connections:
+      security:
+      - module_id: security
+        implementation_id: main
+  security:
+    module: EvseSecurity
+    config_module:
+      mo_ca_bundle: /etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem
+  yeti_driver:
+    module: MicroMegaWattBSP
+    config_module:
+      baud_rate: 115200
+      reset_gpio: 27
+      serial_port: /dev/serial0
+  evse_manager:
+    module: EvseManager
+    telemetry:
+      id: 1
+    config_module:
+      logfile_suffix: TS13
+      connector_id: 1
+      evse_id: DE*PNX*E12345*1
+      session_logging: true
+      session_logging_xml: false
+      session_logging_path: /var/everest-logs/session
+      charge_mode: DC
+      hack_sleep_in_cable_check: 0
+      hack_skoda_enyaq: false
+      hack_pause_imd_during_precharge: false
+      hack_allow_bpt_with_iso2: false
+      payment_enable_contract: true
+      payment_enable_eim: true
+      external_ready_to_start_charging: true
+    connections:
+      bsp:
+      - module_id: yeti_driver
+        implementation_id: board_support
+      powermeter_car_side:
+      - module_id: yeti_driver
+        implementation_id: powermeter
+      slac:
+      - module_id: slac
+        implementation_id: main
+      hlc:
+      - module_id: iso15118_charger
+        implementation_id: charger
+      powersupply_DC:
+      - module_id: yeti_driver
+        implementation_id: dc_supply
+      imd:
+      - module_id: imd
+        implementation_id: main
+  slac:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: eth1
+        do_chip_reset: true
+        link_status_detection: true
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 120
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+      - module_id: token_provider_1
+        implementation_id: main
+      - module_id: ocpp
+        implementation_id: auth_provider
+      - module_id: evse_manager
+        implementation_id: token_provider
+      token_validator:
+      - module_id: ocpp
+        implementation_id: auth_validator
+      evse_manager:
+      - module_id: evse_manager
+        implementation_id: evse
+  token_provider_1:
+    module: DummyTokenProviderManual
+  token_validator:
+    module: DummyTokenValidator
+    config_implementation:
+      main:
+        validation_result: Accepted
+        validation_reason: Token seems valid
+        sleep: 0.25
+  energy_manager:
+    module: EnergyManager
+    config_module:
+      schedule_interval_duration: 60
+      schedule_total_duration: 1
+      debug: false
+    connections:
+      energy_trunk:
+      - module_id: grid_connection_point
+        implementation_id: energy_grid
+  grid_connection_point:
+    module: EnergyNode
+    config_module:
+      fuse_limit_A: 63.0
+      phase_count: 3
+    connections:
+      price_information: []
+      energy_consumer:
+      - module_id: evse_manager
+        implementation_id: energy_grid
+      powermeter:
+      - module_id: yeti_driver
+        implementation_id: powermeter
+  api:
+    module: API
+    config_module:
+      charger_information_file: "/etc/everest/charger_info.yaml"
+    connections:
+      evse_manager:
+      - module_id: evse_manager
+        implementation_id: evse
+  imd:
+    module: IMDSimulator
+  setup:
+    config_module:
+      localization: true
+      setup_simulation: false
+      setup_wifi: true
+      release_metadata_file: everest_release.json
+    connections:
+      store:
+      - module_id: persistent_store
+        implementation_id: main
+    module: Setup
+  persistent_store:
+    module: PersistentStore
+    config_module:
+      sqlite_db_file_path: /etc/everest/everest_persistent_store.db
+    connections: {}
+  ocpp:
+    module: OCPP
+    config_module:
+      ChargePointConfigPath: /etc/everest/custom_configs/ocpp-config.json
+      PublishChargingScheduleIntervalS: 0
+    connections:
+      evse_manager:
+        - module_id: evse_manager
+          implementation_id: evse
+      reservation:
+        - module_id: auth
+          implementation_id: reservation
+      auth:
+        - module_id: auth
+          implementation_id: main
+      system:
+        - module_id: system
+          implementation_id: main
+      security:
+        - module_id: security
+          implementation_id: main
+  system:
+    module: System
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /etc/everest/error_history.db
+  error_history_api:
+    module: error_history_consumer_API
+    config_module:
+      cfg_heartbeat_interval_ms: 0
+      cfg_communication_check_to_s: 0
+    connections:
+      error_history:
+      - module_id: error_history
+        implementation_id: error_history

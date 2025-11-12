@@ -1,0 +1,150 @@
+settings:
+  telemetry_enabled: false
+  mqtt_broker_socket_path: /tmp/mosquitto.socket
+active_modules:
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 60
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+      - module_id: token_provider
+        implementation_id: main
+      token_validator:
+      - module_id: token_validator
+        implementation_id: main
+      evse_manager:
+      - module_id: evse_manager
+        implementation_id: evse
+  energy_manager:
+    config_module:
+      slice_ampere: 1
+      slice_watt: 1000
+    connections:
+      energy_trunk:
+        - implementation_id: energy_grid
+          module_id: grid_connection_point
+    module: EnergyManager
+  evse_manager:
+    config_module:
+      ac_nominal_voltage: 230
+      charge_mode: DC
+      connector_id: 1
+      evse_id: DE*PNX*E12345*1
+      max_current_import_A: 95
+      max_current_export_A: 63
+      payment_enable_contract: true
+      payment_enable_eim: true
+      session_logging: true
+      session_logging_path: /tmp/everest-logs
+      session_logging_xml: false
+      dc_isolation_voltage_V: 500
+      switch_off_on_after_cable_check: true
+      cable_check_wait_number_of_imd_measurements: 10
+    connections:
+      bsp:
+        - implementation_id: board_support
+          module_id: connector_1_powerpath
+      hlc:
+        - implementation_id: charger
+          module_id: iso15118_charger
+      slac:
+        - implementation_id: main
+          module_id: slac
+      powersupply_DC:
+        - implementation_id: main
+          module_id: dc_powersupply
+      imd:
+      - implementation_id: main
+        module_id: iso_monitor
+    module: EvseManager
+  grid_connection_point:
+    config_module:
+      fuse_limit_A: 95
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - implementation_id: energy_grid
+          module_id: evse_manager
+    module: EnergyNode
+  iso15118_charger:
+    config_module:
+      device: eth1
+    connections:
+      security:
+      - implementation_id: main
+        module_id: evse_security
+    module: EvseV2G
+  evse_security:
+    module: EvseSecurity
+  slac:
+    config_implementation:
+      main:
+        device: eth1
+    connections: {}
+    module: EvseSlac
+  token_provider:
+    config_implementation:
+      main:
+        timeout: 120
+        token: DEADBEEF
+    connections:
+      evse:
+        - implementation_id: evse
+          module_id: evse_manager
+    module: DummyTokenProvider
+  connector_1_powerpath:
+    config_module:
+      serial_port: /dev/ttyAMA0
+      baud_rate: 115200
+      reset_gpio: 27
+      caps_max_current_A: 95
+    module: YetiDriver
+  token_validator:
+    config_implementation:
+      main:
+        sleep: 0.25
+        validation_reason: Token seems valid
+        validation_result: Accepted
+    connections: {}
+    module: DummyTokenValidator
+  dc_powersupply:
+    config_module:
+      can_device: can0
+      voltage_mode: 0
+      max_export_current_A: 75
+      max_export_power_W: 40000
+      module_addresses: "1,2"
+    module: UUGreenPower_UR1000X0
+  iso_monitor:
+    config_implementation:
+      main:
+        imd_device_id: 3
+    connections:
+      serial_comm_hub:
+        - implementation_id: main
+          module_id: comm_hub
+    module: Bender_isoCHA425HV
+  comm_hub:
+    config_implementation:
+      main:
+        serial_port: /dev/ttyAMA3
+        baudrate: 19200
+        parity: 2
+        rxtx_gpio_line: 16
+        rxtx_gpio_chip: gpiochip0
+        rxtx_gpio_tx_high: true
+    module: SerialCommHub
+  persistent_store:
+    module: PersistentStore
+    config_module:
+      sqlite_db_file_path: /etc/everest/everest_persistent_store.db
+  system:
+    module: Linux_Systemd_Rauc
+    config_module:
+      RebootCommand: /usr/sbin/tryboot
+    connections:
+      store:
+      - module_id: persistent_store
+        implementation_id: main

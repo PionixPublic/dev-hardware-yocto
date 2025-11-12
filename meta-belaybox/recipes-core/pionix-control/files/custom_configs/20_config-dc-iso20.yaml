@@ -1,0 +1,169 @@
+settings:
+  telemetry_enabled: true
+active_modules:
+  packet_sniffer:
+    connections:
+      evse_manager:
+      - implementation_id: evse
+        module_id: evse_manager
+    module: PacketSniffer
+  iso15118_charger:
+    module: Evse15118D20
+    config_module:
+      device: eth1
+      logging_path: /var/everest-logs/logs-iso20
+      certificate_path: /etc/everest/certs
+      tls_negotiation_strategy: ACCEPT_CLIENT_OFFER
+      enable_tls_key_logging: true
+      supported_dynamic_mode: true
+      supported_mobility_needs_mode_provided_by_secc: true
+      supported_scheduled_mode: true
+  yeti_driver:
+    module: MicroMegaWattBSP
+    config_module:
+      baud_rate: 115200
+      reset_gpio: 27
+      serial_port: /dev/serial0
+  evse_manager:
+    module: EvseManager
+    telemetry:
+      id: 1
+    config_module:
+      logfile_suffix: 20_iso-20
+      connector_id: 1
+      evse_id: DE*PNX*E12345*1
+      session_logging: true
+      session_logging_xml: false
+      session_logging_path: /var/everest-logs/session
+      charge_mode: DC
+      hack_sleep_in_cable_check: 0
+      hack_skoda_enyaq: false
+      hack_pause_imd_during_precharge: false
+      hack_allow_bpt_with_iso2: false
+      payment_enable_contract: false
+      payment_enable_eim: true
+    connections:
+      bsp:
+      - module_id: yeti_driver
+        implementation_id: board_support
+      powermeter_car_side:
+      - module_id: yeti_driver
+        implementation_id: powermeter
+      slac:
+      - module_id: slac
+        implementation_id: main
+      hlc:
+      - module_id: iso15118_charger
+        implementation_id: charger
+      powersupply_DC:
+      - module_id: yeti_driver
+        implementation_id: dc_supply
+      imd:
+      - module_id: imd
+        implementation_id: main
+  slac:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: eth1
+        do_chip_reset: true
+        link_status_detection: true
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 10
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+      - module_id: token_provider_1
+        implementation_id: main
+      token_validator:
+      - module_id: token_validator
+        implementation_id: main
+      evse_manager:
+      - module_id: evse_manager
+        implementation_id: evse
+  token_provider_1:
+    module: DummyTokenProvider
+    connections:
+      evse:
+      - module_id: evse_manager
+        implementation_id: evse
+  token_validator:
+    module: DummyTokenValidator
+    config_implementation:
+      main:
+        validation_result: Accepted
+        validation_reason: Token seems valid
+        sleep: 0.25
+  energy_manager:
+    module: EnergyManager
+    config_module:
+      schedule_interval_duration: 60
+      schedule_total_duration: 1
+      debug: false
+    connections:
+      energy_trunk:
+      - module_id: grid_connection_point
+        implementation_id: energy_grid
+  grid_connection_point:
+    module: EnergyNode
+    config_module:
+      fuse_limit_A: 63.0
+      phase_count: 3
+    connections:
+      price_information: []
+      energy_consumer:
+      - module_id: evse_manager
+        implementation_id: energy_grid
+      powermeter:
+      - module_id: yeti_driver
+        implementation_id: powermeter
+  api:
+    module: API
+    config_module:
+      charger_information_file: "/etc/everest/charger_info.yaml"
+    connections:
+      evse_manager:
+      - module_id: evse_manager
+        implementation_id: evse
+  imd:
+    module: IMDSimulator
+  setup:
+    config_module:
+      localization: true
+      setup_simulation: false
+      setup_wifi: true
+      release_metadata_file: everest_release.json
+    connections:
+      store:
+      - module_id: persistent_store
+        implementation_id: main
+    module: Setup
+  persistent_store:
+    module: PersistentStore
+    config_module:
+      sqlite_db_file_path: /etc/everest/everest_persistent_store.db
+    connections: {}
+  system:
+    module: Linux_Systemd_Rauc
+    config_module:
+      RebootCommand: /usr/sbin/tryboot
+    connections:
+      store:
+      - module_id: persistent_store
+        implementation_id: main
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /etc/everest/error_history.db
+  error_history_api:
+    module: error_history_consumer_API
+    config_module:
+      cfg_heartbeat_interval_ms: 0
+      cfg_communication_check_to_s: 0
+    connections:
+      error_history:
+      - module_id: error_history
+        implementation_id: error_history
