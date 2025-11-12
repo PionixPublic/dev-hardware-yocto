@@ -1,0 +1,1 @@
+alias tryboot="reboot '0 tryboot'"

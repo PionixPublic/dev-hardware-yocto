@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo "Post-merge: checking if setup needs to run"
+CHANGED=`git diff HEAD@{1} --stat -- ./setup | wc -l`
+
+# Check if the setup file has been modified
+if [ $CHANGED -eq 0 ]; then
+    echo "No changes to setup file. Skipping setup tool."
+else
+    # Run setup tool
+    ./setup --sync --sync_method fetch
+fi
+

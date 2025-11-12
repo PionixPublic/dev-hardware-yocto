@@ -1,0 +1,11 @@
+[Unit]
+Description=This creates the factory_data file structure needed for rauc backend
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/rauc/rauc-init.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

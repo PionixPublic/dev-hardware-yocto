@@ -1,0 +1,182 @@
+#!/usr/bin/python3
+
+#
+# Add, remove, modify the layers to sync, here. The tool doesn't change the bblayers.conf so be sure to update that too
+#
+
+pionix_forgejo = "ssh://forgejo@git.pionix.com/Pionix"
+pionix_forgejo_yocto = "git://forgejo@git.pionix.com/Pionix"
+
+# Add new sources if necessary
+remotes = [
+    {"name": "yocto",        "url": "git://git.yoctoproject.org"},
+    {"name": "openembedded", "url": "git://git.openembedded.org"},
+    {"name": "github",       "url": "https://github.com"},
+    {"name": "github-pionix","url": "ssh://git@github.com/PionixPro"},
+    {"name": "github-everest","url": "https://github.com/EVerest"}
+]
+
+layers = [
+    {"rev":"76f02096aaf7a473a49eebce7ee8d3de938c96e0",  "branch":"scarthgap",        "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
+    {"rev":"ec0e90ce423f8cba7b52a4452f5c32a50dce230d",  "branch":"scarthgap",        "repo":"poky",                             "path":"poky",               "remote":"yocto"},
+    {"rev":"3cadb81ffaa9f03b92e302843cb22a9cd41df34b",  "branch":"scarthgap",        "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
+    {"rev":"6df7e028a2b7b2d8cab0745dc0ed2eebc3742a17",  "branch":"scarthgap",        "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
+    {"rev":"66ceeebd047d7fdfc8668b300319a76da8ae257d",  "branch":"scarthgap/u-boot", "repo":"meta-lts-mixins",                  "path":"meta-lts-mixins",    "remote":"yocto"},
+    {"rev":"aeb5b71bd25dcaa04221cfdda35a3dd4f309e214",  "branch":"scarthgap",        "repo":"meta-flutter/meta-flutter",        "path":"meta-flutter",       "remote":"github"},
+    {"rev":"8c77b427408db01b8de4c04bd3d247c13c154f92",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
+    {"rev":"76b97796be1d0303436835e56d85d7316a1029d9",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
+    {"rev":"bc865c5276c2ab4031229916e8d7c20148dfbac3",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
+    {"rev":"680a9c764b718767f7264ca91c8c43146db93ade",  "branch":"scarthgap",        "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
+]
+
+#
+# Please don't change the code locally or if you do please talk with the others to integrate your changes
+#
+import os
+import sys
+import argparse
+import subprocess
+import re
+
+# Use SOURCEROOT environment variable, with a default fallback
+layers_location = os.environ.get("SOURCEROOT", os.path.join("..", "source"))
+
+# Ensure layers_location does not end with a slash
+layers_location = os.path.normpath(layers_location)
+
+# ANSI color codes
+RED = '\033[91m'
+YELLOW = '\033[93m'
+RESET = '\033[0m'
+
+def get_git_remote():
+    try:
+        remote_url = subprocess.check_output(
+            ["git", "remote", "get-url", "origin"],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+        return remote_url
+    except subprocess.CalledProcessError:
+        return None
+
+def print_error(message):
+    print(f"\033[97;41mError:\033[0m {message}")
+
+def print_warning(message):
+    print(f"\033[30;43mWarning:\033[0m {message}")
+
+def print_msg(message):
+    print(f"\033[97;42mExecute:\033[0m {message}")
+
+def format_underline(message):
+    return f"\033[34;4m{message}\033[0m"
+
+def get_remote_url(remote_name):
+    for remote in remotes:
+        if remote["name"] == remote_name:
+            return remote["url"]
+    return None
+
+def is_commit_hash(rev):
+    # A commit hash is a 40-character hexadecimal string
+    return bool(re.match(r'^[0-9a-f]{40}$', rev))
+
+def loop_over_layers(do_init, do_sync, sync_method):
+    print_msg(f"Looping over layers, using layers_location {layers_location}")
+    for layer in layers:
+        print()
+        path = os.path.join(layers_location, layer["path"])
+        if os.path.exists(path) and os.listdir(path):
+            if do_init:
+                url = get_remote_url(layer["remote"])+ "/" + layer["repo"]
+                print_warning(f'Init was requested for repo {format_underline(url)} using existing path {path}')
+                print_warning("Existing folder (layer) will not be altered, run the tool again with --sync to update it. You can delete it (if you don't have changes) and rerun with --init if needed.")
+                continue
+            if not layer["rev"]:
+                command = f'cd "{path}" && git {sync_method} origin {layer["branch"]} && git checkout {layer["branch"]}'
+            else:
+                if is_commit_hash(layer["rev"]):
+                    command = f'cd "{path}" && git {sync_method} origin {layer["branch"]} && git checkout {layer["rev"]}'
+                else:
+                    # For tags or branch names, fetch all tags before checkout
+                    command = f'cd "{path}" && git {sync_method} --tags && git checkout {layer["rev"]}'
+        else:
+            if do_sync:
+                print_warning(f"Sync was requested but the folder {path} doesn't exist, we will do nothing, run init to create it")
+                continue
+            if not layer["rev"]:
+                command = f'git clone -b {layer["branch"]} {get_remote_url(layer["remote"])}/{layer["repo"]} "{path}"'
+            else:
+                if is_commit_hash(layer["rev"]):
+                    command = f'git clone -b {layer["branch"]} {get_remote_url(layer["remote"])}/{layer["repo"]} "{path}" && cd "{path}" && git checkout {layer["rev"]}'
+                else:
+                    # For tags or branch names, clone without --single-branch to include all refs
+                    command = f'git clone {get_remote_url(layer["remote"])}/{layer["repo"]} "{path}" && cd "{path}" && git checkout {layer["rev"]}'
+        print_msg(command)
+        process = subprocess.Popen(command, shell=True)
+        exit_code = process.wait()
+        if exit_code != 0:
+            print_error(f"The last command returned with error ({exit_code}), exiting ...")
+            sys.exit(1)
+
+def main():
+    parser = argparse.ArgumentParser(description='Creates the layer structure and synchronizes it')
+    parser.add_argument('--init', action='store_true', help='Initializes the entire Yocto structure')
+    parser.add_argument('--sync', action='store_true', help='Synchronizes the layers to the given revision or to the given branch HEAD')
+    parser.add_argument('--sync_method', choices=['fetch', 'pull'], help='Synchronization method')
+
+    # Parse command-line arguments
+    args = parser.parse_args()
+
+    # Validate args
+    if not args.init and not args.sync:
+        print_error("You need to provide an operation, either --init or --sync\n")
+        parser.print_help()
+        sys.exit(1)
+    if args.init and args.sync_method:
+        print_error("Cannot use --init with --sync_method\n")
+        parser.print_help()
+        sys.exit(1)
+
+    # Set the working directory to the script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+
+    # Replace if match
+    git_remote = get_git_remote()
+    if git_remote and git_remote.startswith(pionix_forgejo):
+        for r in remotes:
+            if r["name"] == "github-pionix":
+                r["url"] = pionix_forgejo
+                break
+
+    # Check if we should skip hook installation
+    if os.environ.get("SKIP_SETUP_HOOK") == "1":
+        print_msg("SKIP_SETUP_HOOK is set. Skipping hook installation.")
+    else:
+        if args.init:
+            if git_remote and git_remote.startswith(pionix_forgejo):
+                print_msg("Modify build/conf/local.conf in order to use in the recipes the cloud git repositories. You can change them afterwards to your needs, just look after the GIT_REPOSITORY_URL variable")
+                cmd = f"grep -q '^GIT_REPOSITORY_URL' build/conf/local.conf || echo 'GIT_REPOSITORY_URL = \"{pionix_forgejo_yocto}\"' >> build/conf/local.conf"
+                process = subprocess.Popen(cmd, shell=True)
+                exit_code = process.wait()
+                if exit_code != 0:
+                    print_error(f"I can't modify the build/local.conf file, got error code ({exit_code}). Please add the following line to it manually: GIT_REPOSITORY_URL = \"{pionix_forgejo}\"")
+                    sys.exit(1)
+
+            print_msg("Add hooks so that if the setup is changed after a pull request or a commit, it will be executed automatically and sync the repos")
+            process = subprocess.Popen("cp .githooks/* .git/hooks/", shell=True)
+            exit_code = process.wait()
+            if exit_code != 0:
+                print_error(f"I can't install the hooks, git the error code ({exit_code}), please be warned that setup will not be executed automatically when it changes.")
+                sys.exit(1)
+            process = subprocess.Popen("chmod +x .git/hooks/post-*", shell=True)
+            exit_code = process.wait()
+            if exit_code != 0:
+                print_error(f"I can't make the hooks executable, got error code ({exit_code}), please be warned that setup will not be executed automatically when it changes.")
+                sys.exit(1)
+
+    loop_over_layers(args.init, args.sync, "fetch" if not args.sync_method else args.sync_method)
+
+if __name__ == "__main__":
+    main()

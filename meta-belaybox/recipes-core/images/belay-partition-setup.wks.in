@@ -1,0 +1,7 @@
+part --source bootimg-partition --ondisk mmcblk0 --fstype=vfat --label boot --active --align 4096 --fixed-size 512
+part --source bootimg-partition --ondisk mmcblk0 --fstype=ext4 --label boot_a --align 4096 --fixed-size 512
+part --source bootimg-partition --ondisk mmcblk0 --fstype=ext4 --label boot_b --align 4096 --fixed-size 512
+part --source rootfs --ondisk mmcblk0 --fstype=ext4 --label root_A --align 4096 --fixed-size 3000
+part --source rootfs --ondisk mmcblk0 --fstype=ext4 --label root_B --align 4096 --fixed-size 3000
+part --ondisk mmcblk0 --fstype=ext4 --label factory_data --align 4096 --fixed-size 128
+part --ondisk mmcblk0 --fstype=ext4 --label overlay --align 4096 --fixed-size 7000

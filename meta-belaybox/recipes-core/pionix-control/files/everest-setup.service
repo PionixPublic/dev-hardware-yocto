@@ -1,0 +1,14 @@
+[Unit]
+Description=EVerest Setup
+Requires=mosquitto.service
+After=mosquitto.service
+ConditionFileNotEmpty=/etc/everest/setup.yaml
+
+[Service]
+Type=simple
+Restart=always
+Nice=-20
+ExecStart=/usr/bin/manager --conf /etc/everest/setup.yaml
+
+[Install]
+WantedBy=multi-user.target

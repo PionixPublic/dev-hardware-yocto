@@ -1,0 +1,63 @@
+active_modules:
+  ev_api:
+    connections:
+      ev_manager:
+        - implementation_id: ev_manager
+          module_id: ev_manager
+    module: EvAPI
+  persistent_store:
+    config_module:
+      sqlite_db_file_path: everest_persistent_store.db
+    connections: {}
+    module: PersistentStore
+  setup:
+    config_module:
+      initialized_by_default: true
+      localization: true
+      online_check_host: lfenergy.org
+      setup_simulation: true
+      setup_wifi: false
+      release_metadata_file: everest_release.json
+    connections:
+      store:
+        - implementation_id: main
+          module_id: persistent_store
+    module: Setup
+  iso15118_ev:
+    module: PyEvJosev
+    config_module:
+      device: eth1
+      supported_DIN70121: true
+      supported_ISO15118_2: true
+      supported_ISO15118_20_DC: true
+      tls_active: false
+  mMWcar:
+    module: mMWcarBSP
+    config_module:
+      serial_port: /dev/serial0
+  ev_slac:
+    module: EvSlac
+    config_implementation:
+      main:
+        do_chip_reset: false
+        device: eth1
+  ev_manager:
+    module: EvManager
+    config_module:
+      connector_id: 1
+      auto_enable: true
+      auto_exec: true
+      auto_exec_infinite: false
+      auto_exec_commands: wait_for_real_plugin;iso_wait_pwm_is_running;iso_wait_slac_matched;iso_start_v2g_session DC;iso_wait_pwr_ready;iso_dc_power_on;iso_wait_for_stop 60;iso_wait_v2g_session_stopped;unplug;sleep 5;
+      dc_target_current: 5
+      dc_target_voltage: 444
+    connections:
+      ev_board_support:
+        - module_id: mMWcar
+          implementation_id: simple_board_support
+      ev:
+        - module_id: iso15118_ev
+          implementation_id: ev
+      slac:
+        - module_id: ev_slac
+          implementation_id: main

@@ -1,0 +1,11 @@
+{
+    "name": "BelayBox Yocto",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "containerEnv": {
+        "SOURCEROOT": "/workspaces/belaybox-yocto/source",
+        "BB_ENV_PASSTHROUGH_ADDITIONS": "SOURCEROOT"
+    },
+    "remoteUser": "vscode"
+}
