@@ -1,6 +1,7 @@
 # Ignore everything in build, except the conf folder
 build/tmp/*
 build/cache/*
+build/conf/conf-summary.txt
 build/downloads/*
 build/sstate-cache/*
 build/tmp/*

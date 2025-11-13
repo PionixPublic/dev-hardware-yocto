@@ -26,7 +26,7 @@ layers = [
     {"rev":"8c77b427408db01b8de4c04bd3d247c13c154f92",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
     {"rev":"76b97796be1d0303436835e56d85d7316a1029d9",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"bc865c5276c2ab4031229916e8d7c20148dfbac3",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
-    {"rev":"680a9c764b718767f7264ca91c8c43146db93ade",  "branch":"scarthgap",        "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
+    {"rev":"578bd5070c401c7788e5159f9a006e2899113a5b",  "branch":"scarthgap",        "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
 ]
 
 #
