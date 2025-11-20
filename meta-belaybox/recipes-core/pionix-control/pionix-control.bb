@@ -44,6 +44,7 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 SYSTEMD_PACKAGES = "${PN}"
 
 SYSTEMD_SERVICE:${PN} += "pionix-control.service"
+SYSTEMD_SERVICE:${PN} += "everest-control.service"
 SYSTEMD_SERVICE:${PN} += "everest-setup.service"
 
 do_install:append() {
@@ -52,6 +53,7 @@ do_install:append() {
     install -d ${D}${sysconfdir}/everest
     install -d ${D}${sysconfdir}/everest/custom_configs
     install -m 0644 ${S}/pionix-control.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/everest-control.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/everest-setup.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/charger_info.yaml ${D}${sysconfdir}/everest
     install -m 0644 ${WORKDIR}/everest_configs.yaml ${D}${sysconfdir}/everest
