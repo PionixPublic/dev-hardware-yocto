@@ -1,6 +1,15 @@
-# How to use Belaybox and build an Yocto image
+# Pionix Dev Hardware Yocto
 
-## Step 1: Clone this repository
+This repository contains the Yocto configuration to build images for Pionix development hardware like Belaybox and MicroMegawattCharger which is based on YAK.
+
+> [!IMPORTANT]  
+> Do not treat this as an example of a production grade Yocto setup for EVerest based chargers.
+> Refer to our PhyVERSO Yocto setup for that use case.
+
+## How to use Belaybox / MicroMegawattCharger and build an Yocto image
+
+
+### Step 1: Clone this repository
 Create a folder (e.g. pionix) where everything will be placed.
 
 ```
@@ -9,7 +18,7 @@ cd pionix
 git clone git@github.com:PionixPublic/dev-hardware-yocto.git
 ```
 
-## Step 2: Run the setup tool
+### Step 2: Run the setup tool
 We are using a tool part of this repository (you find it in the root folder) to sync and initialize the meta layers and prepare everything for the build.
 The tool supports 2 operations `init` and `sync`.
 
@@ -35,11 +44,11 @@ $ ./setup --init
 The tool will run and sync the repositories.
 Eventually, if you make any changes to the layers or somebody made changes and you want to sync those changes locally you run it with the option `--sync`. This allows you to sync locally the changes made in the upstream. If you made changes as well to the layers you want to sync, you might want to specify how to sync (`fetch` or `pull`) so that you can have the possibility to rebase or merge the changes. By default the method is `fetch` if no argument is provided.
 
-## Step 3: Build the image
+### Step 3: Build the image
 The Belaybox repo comes with a build directory (containing only the config folder).
 In the config folder there is a default configuration file `local.conf` and the layers configuration `bblayers.conf`.
 
-### Configure the build
+#### Configure the build
 There are a lot of configuration parameters available, however, the most interesting ones are:
 
 ```
@@ -48,7 +57,7 @@ BELAYBOX_UNSTABLE = "1"
 ```
 You can change them to your needs before building.
 
-### Build the image
+#### Build the image
 To start building the image you need to source the yocto environment:
 
 ```
@@ -131,10 +140,10 @@ NOTE: Tasks Summary: Attempted 6953 tasks of which 6938 didn't need to be rerun 
 ```
 The image file or the bundle will be located in the subfolder of the `build` folder: `tmp/deploy/images/raspberrypi4/` and are called `belaybox-image-raspberrypi4.wic.bz2` respectivelly `belaybox-bundle-raspberrypi4.raucb`.
 
-## Step 4: Flash the image or the bundle on your target
+### Step 4: Flash the image or the bundle on your target
 For the image solution is possible only if target has an SD Card that you can remove and flash it on the host side.
 
-### Update your target with the belaybox-image
+#### Update your target with the belaybox-image
 > **Warning:** Before you do this step, please double check which device is your SD Card that you want to flash, otherwise you risk to damage your host system
 ```
 cd pionix/belaybox/build
@@ -143,13 +152,13 @@ cd tmp/deploy/images/raspberrypi4/
 sudo bmaptool copy belaybox-image-raspberrypi4.wic.bz2 /dev/sd<a,b ... chech this>
 ```
 
-### Update your target with the bundle you just created
+#### Update your target with the bundle you just created
 There are 2 methods to do this as we speak, as OTA - using a small HTTP server or have the image copied locally on the target (scp, USB stick, etc).
 
 
-#### Using OTA
+##### Using OTA
 
-##### Run this on your host
+###### Run this on your host
 ```
 cd pionix/belaybox/build
 cd tmp/deploy/images/raspberrypi4/
@@ -158,7 +167,7 @@ pip install rangehttpserver
 python3 -m RangeHTTPServer
 ```
 
-##### Run this on your target
+###### Run this on your target
 ```
 rauc install http://<the_ip_address_of_your_host_and_the_port>/belaybox-bundle-raspberrypi4.raucb
 ```
@@ -166,7 +175,7 @@ rauc install http://<the_ip_address_of_your_host_and_the_port>/belaybox-bundle-r
 
 Once the update has finished, you can test the new image with this command: ```reboot '0 tryboot'```
 
-#### Using local copy of the image
+##### Using local copy of the image
 Altenate method: you can copy the image on a device (e.g. USB stick) and use the following commands (once the device is mounted on the target):
 ```
 rauc install /<path_to_the_image_file>/belaybox-bundle-raspberrypi4.raucb
@@ -174,7 +183,7 @@ tryboot
 ```
 ```tryboot``` is an alias to boot the target and try the newly flashed image. A simple reboot will NOT boot the new image.
 
-## Step 5: Update the layers by making changes in setup script
+### Step 5: Update the layers by making changes in setup script
 In order to make any changes to the yocto layers (add, remove or update) you have to change the setup script.
 If you open the script in a file editor, at the top, you will find listed the layers with the branches and the commit id.
 It should look something like this:
