@@ -9,10 +9,10 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 # Default SRCREV and SRC_URI
-SRCREV = "808cbcf62fd5bb85b3c382a011a9cbeccbc02ad6"
 SRC_URI = "git://github.com/PionixPublic/display-app.git;branch=development;protocol=https \
            file://display-app.service \
           "
+SRCREV = "58d56906bf068892a01402d4a96db5fde075d76b"
 
 inherit flutter-app
 inherit features_check
@@ -20,7 +20,6 @@ inherit systemd
 
 S = "${WORKDIR}/git"
 
-SRCREV = "7e3e5feff8d0ac7aaff978992d0446b62ddad159"
 do_configure[network] = "1"
 do_compile[network] = "1"
 
