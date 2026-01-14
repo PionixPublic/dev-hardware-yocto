@@ -45,7 +45,7 @@ COMMON_PACKAGES = " \
         iproute2 \
         tree \
         curl \
-        pionix-wpa-supplicant \
+        wpa-supplicant \
         autoinstall \
 	perf \
         ftxui \
