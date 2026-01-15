@@ -17,16 +17,16 @@ remotes = [
 ]
 
 layers = [
-    {"rev":"fda737ec0cc1d2a5217548a560074a8e4d5ec580",  "branch":"kirkstone",  "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
-    {"rev":"b3e316e8486e5462c3c71a9c8248779a5c253385",  "branch":"kirkstone",  "repo":"poky",                             "path":"poky",               "remote":"yocto"},
-    {"rev":"b187fb9232ca0a6b5f8f90b4715958546fc41d73",  "branch":"kirkstone",  "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
-    {"rev":"9dc6673d41044f1174551120ce63501421dbcd85",  "branch":"kirkstone",  "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
-    {"rev":"b8a6349ec476c0a38436be7503ef963f49c2c461",  "branch":"kirkstone/go", "repo":"meta-lts-mixins",                "path":"meta-lts-mixins",    "remote":"yocto"},
+    {"rev":"7d4507f226bd2af939d4482fb14a809867ece939",  "branch":"kirkstone",  "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
+    {"rev":"c942cdb0572ab065a13424aa7482404269ff9554",  "branch":"kirkstone",  "repo":"poky",                             "path":"poky",               "remote":"yocto"},
+    {"rev":"c3e9fb12aa31d25e33d8392c4a233ed1275a3278",  "branch":"kirkstone",  "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
+    {"rev":"255500dd9f6a01a3445ac491d1abc401801e3bad",  "branch":"kirkstone",  "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
+    {"rev":"2e863aa716386c4d14ff482b6caf4faccf8a1c91",  "branch":"kirkstone/go", "repo":"meta-lts-mixins",                "path":"meta-lts-mixins",    "remote":"yocto"},
     {"rev":"2626dfec92ffd3dbf810d571b9f7ede13bf56591",  "branch":"kirkstone",  "repo":"meta-flutter/meta-flutter",        "path":"meta-flutter",       "remote":"github"},
-    {"rev":"312ff1c39b1bf5d35c0321e873417eb013cea477",  "branch":"kirkstone",  "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
-    {"rev":"ed6dc67ffb143a4c4fac01e0b7e8a60fc6260b85",  "branch":"kirkstone",  "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
-    {"rev":"cc20e2af2ae1c74e306f6c039c4963457c4cbd0f",  "branch":"kirkstone",  "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
-    {"rev":"65fdec15eb6c6503ea5e43b6884253ba1284d58e",  "branch":"kirkstone",  "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
+    {"rev":"eafdaa3cda9000c6d9bd1819ffe1219c7b66e4b8",  "branch":"kirkstone",  "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
+    {"rev":"4cb7c47686d5dec9bacae6110f1bcaac57568691",  "branch":"kirkstone",  "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
+    {"rev":"b9cf9cd639bc8d1b4828eb0bd012b71486d35176",  "branch":"kirkstone",  "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
+    {"rev":"fc321ac541fc97d2e571bb65862b6f5ee31ccf75",  "branch":"kirkstone",  "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
 ]
 
 #
