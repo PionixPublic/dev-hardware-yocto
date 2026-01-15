@@ -20,7 +20,7 @@ layers = [
     {"rev":"7d4507f226bd2af939d4482fb14a809867ece939",  "branch":"kirkstone",  "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
     {"rev":"c942cdb0572ab065a13424aa7482404269ff9554",  "branch":"kirkstone",  "repo":"poky",                             "path":"poky",               "remote":"yocto"},
     {"rev":"c3e9fb12aa31d25e33d8392c4a233ed1275a3278",  "branch":"kirkstone",  "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
-    {"rev":"9dc6673d41044f1174551120ce63501421dbcd85",  "branch":"kirkstone",  "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
+    {"rev":"255500dd9f6a01a3445ac491d1abc401801e3bad",  "branch":"kirkstone",  "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
     {"rev":"2e863aa716386c4d14ff482b6caf4faccf8a1c91",  "branch":"kirkstone/go", "repo":"meta-lts-mixins",                "path":"meta-lts-mixins",    "remote":"yocto"},
     {"rev":"2626dfec92ffd3dbf810d571b9f7ede13bf56591",  "branch":"kirkstone",  "repo":"meta-flutter/meta-flutter",        "path":"meta-flutter",       "remote":"github"},
     {"rev":"eafdaa3cda9000c6d9bd1819ffe1219c7b66e4b8",  "branch":"kirkstone",  "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
