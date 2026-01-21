@@ -17,16 +17,16 @@ remotes = [
 ]
 
 layers = [
-    {"rev":"76f02096aaf7a473a49eebce7ee8d3de938c96e0",  "branch":"scarthgap",        "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
-    {"rev":"ec0e90ce423f8cba7b52a4452f5c32a50dce230d",  "branch":"scarthgap",        "repo":"poky",                             "path":"poky",               "remote":"yocto"},
-    {"rev":"3cadb81ffaa9f03b92e302843cb22a9cd41df34b",  "branch":"scarthgap",        "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
-    {"rev":"6df7e028a2b7b2d8cab0745dc0ed2eebc3742a17",  "branch":"scarthgap",        "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
-    {"rev":"66ceeebd047d7fdfc8668b300319a76da8ae257d",  "branch":"scarthgap/u-boot", "repo":"meta-lts-mixins",                  "path":"meta-lts-mixins",    "remote":"yocto"},
+    {"rev":"2759d8870ea387b76c902070bed8a6649ff47b56",  "branch":"scarthgap",        "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
+    {"rev":"72983ac391008ebceb45edc7a8f0f6d5f4fe715c",  "branch":"scarthgap",        "repo":"poky",                             "path":"poky",               "remote":"yocto"},
+    {"rev":"a81c19915b5b9e71ed394032e9a50fd06919e1cd",  "branch":"scarthgap",        "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
+    {"rev":"2c646d29912dcc873469a57b1c207e1549c5094d",  "branch":"scarthgap",        "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
+    {"rev":"a44882db02a0ed0f149371831bfbe067665eb42b",  "branch":"scarthgap/u-boot", "repo":"meta-lts-mixins",                  "path":"meta-lts-mixins",    "remote":"yocto"},
     {"rev":"aeb5b71bd25dcaa04221cfdda35a3dd4f309e214",  "branch":"scarthgap",        "repo":"meta-flutter/meta-flutter",        "path":"meta-flutter",       "remote":"github"},
-    {"rev":"8c77b427408db01b8de4c04bd3d247c13c154f92",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
-    {"rev":"76b97796be1d0303436835e56d85d7316a1029d9",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
-    {"rev":"bc865c5276c2ab4031229916e8d7c20148dfbac3",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
-    {"rev":"578bd5070c401c7788e5159f9a006e2899113a5b",  "branch":"scarthgap",        "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
+    {"rev":"5c602337ea1a80fb7217eeda04e396cf90587dca",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
+    {"rev":"a0f4a8b9986954239850b9d4256c003c91e6b931",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
+    {"rev":"afbbe28cee4af2c6760aaead43a4a3ef29969809",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
+    {"rev":"ad1b1e247b5d5ef29afcdb9477dd9dd229bb5537",  "branch":"scarthgap",        "repo":"meta-everest",                     "path":"meta-everest",       "remote":"github-everest"},
 ]
 
 #
