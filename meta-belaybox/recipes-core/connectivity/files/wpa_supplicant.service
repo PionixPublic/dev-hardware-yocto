@@ -5,8 +5,7 @@ After=dbus.service
 Wants=network.target
 
 [Service]
-Type=dbus
-BusName=fi.w1.wpa_supplicant1
+Type=exec
 ExecStart=/usr/sbin/wpa_supplicant -u -Dnl80211 -iwlan0 -c/etc/wpa_supplicant.conf
 
 [Install]
