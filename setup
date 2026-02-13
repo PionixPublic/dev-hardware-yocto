@@ -9,11 +9,11 @@ pionix_forgejo_yocto = "git://forgejo@git.pionix.com/Pionix"
 
 # Add new sources if necessary
 remotes = [
-    {"name": "yocto",        "url": "git://git.yoctoproject.org"},
-    {"name": "openembedded", "url": "git://git.openembedded.org"},
-    {"name": "github",       "url": "https://github.com"},
-    {"name": "github-pionix","url": "ssh://git@github.com/PionixPro"},
-    {"name": "github-everest","url": "https://github.com/EVerest"}
+    {"name": "yocto",         "url": "git://git.yoctoproject.org"},
+    {"name": "openembedded",  "url": "git://git.openembedded.org"},
+    {"name": "github",        "url": "https://github.com"},
+    {"name": "github-pionix", "url": "ssh://git@github.com/PionixPro"},
+    {"name": "github-everest","url": "https://github.com/EVerest"},
 ]
 
 layers = [
@@ -26,6 +26,7 @@ layers = [
     {"rev":"5c602337ea1a80fb7217eeda04e396cf90587dca",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
     {"rev":"a0f4a8b9986954239850b9d4256c003c91e6b931",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"afbbe28cee4af2c6760aaead43a4a3ef29969809",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
+    {"rev":"8b1543e121deda2445f80f74d85c10316d5b31f4",  "branch":"scarthgap",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
     {"rev":"2026.02.0",                                 "branch":"release/2026.02.0","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
 ]
 
