@@ -24,9 +24,6 @@ COMMON_PACKAGES = " \
         everest-common \
         libocpp \
         mosquitto \
-        display-app \
-        flutter-pi \
-        flutter-engine \
         fontconfig \
         ttf-roboto \
         tzdata \

@@ -1,0 +1,48 @@
+[Unit]
+Description=Chromium Wayland Kiosk Container
+After=docker.service weston.service
+Requires=docker.service weston.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+
+# 1. Run our build script (will only build on first boot)
+ExecStartPre=/usr/bin/bash /usr/bin/build-chromium.sh
+
+# 2. Cleanup old runs
+ExecStartPre=-/usr/bin/docker rm -f chromium
+ExecStartPre=-/bin/rm -rf /tmp/chromium-data
+
+# 3. Launch
+ExecStart=/usr/bin/docker run --name=chromium \
+  --privileged \
+  --entrypoint="chromium" \
+  -v /tmp:/tmp \
+  -v /var/run/dbus:/var/run/dbus \
+  -v /dev:/dev \
+  -v /run/wayland-0:/tmp/wayland-0 \
+  -e WAYLAND_DISPLAY=wayland-0 \
+  -e XDG_RUNTIME_DIR=/tmp \
+  -e DISPLAY= \
+  --shm-size 512mb \
+  rpi-chromium \
+  --user-data-dir=/tmp/chromium-data \
+  --no-sandbox \
+  --disable-gpu-sandbox \
+  --test-type \
+  --ignore-gpu-blocklist \
+  --use-gl=angle \
+  --use-angle=gles \
+  --disable-vulkan \
+  --disable-features=Vulkan \
+  --ozone-platform=wayland \
+  --kiosk \
+  --incognito \
+  "http://example.org"
+
+ExecStop=/usr/bin/docker stop chromium
+
+[Install]
+WantedBy=graphical.target

@@ -15,11 +15,17 @@ include image_common.inc
 
 CORE_IMAGE_EXTRA_INSTALL += "\
         ${COMMON_PACKAGES} \
-        display-app \
-        flutter-pi \
-        flutter-engine \
         everest-belaybox \
+        chromium-kiosk \ 
         motd-belaybox \
+        docker-moby \
+        docker-moby-cli \
+        weston \
+        weston-init \
+        mesa \
+        mesa-demos \
+        kernel-modules \
+        linux-firmware-rpidistro-bcm43455 \
 "
 
 PACKAGE_EXCLUDE += " \
@@ -59,3 +65,4 @@ set_custom_hostname_belaybox() {
 
 # Add the function to the post-processing commands
 ROOTFS_POSTPROCESS_COMMAND += "set_custom_hostname_belaybox; "
+SYSTEMD_DEFAULT_TARGET = "graphical.target"
