@@ -1,14 +1,14 @@
 [Unit]
 Description=Chromium Wayland Kiosk Container
-After=docker.service weston.service
-Requires=docker.service weston.service
+After=docker.service weston.service next-display-app.service
+Requires=docker.service weston.service next-display-app.service
 
 [Service]
 Type=simple
 Restart=always
 RestartSec=5
 
-# 1. Run our build script (will only build on first boot)
+# 1. Run our setup script (will only load on first boot)
 ExecStartPre=/usr/bin/bash /usr/bin/build-chromium.sh
 
 # 2. Cleanup old runs
@@ -16,6 +16,8 @@ ExecStartPre=-/usr/bin/docker rm -f chromium
 ExecStartPre=-/bin/rm -rf /tmp/chromium-data
 
 # 3. Launch
+Environment=KIOSK_URL=@KIOSK_URL@
+EnvironmentFile=-@SYSCONFDIR@/chromium-kiosk/chromium-kiosk.conf
 ExecStart=/usr/bin/docker run --name=chromium \
   --privileged \
   --entrypoint="chromium" \
@@ -40,7 +42,7 @@ ExecStart=/usr/bin/docker run --name=chromium \
   --ozone-platform=wayland \
   --kiosk \
   --incognito \
-  "http://example.org"
+  "${KIOSK_URL}"
 
 ExecStop=/usr/bin/docker stop chromium
 

@@ -16,7 +16,8 @@ include image_common.inc
 CORE_IMAGE_EXTRA_INSTALL += "\
         ${COMMON_PACKAGES} \
         everest-belaybox \
-        chromium-kiosk \ 
+        chromium-kiosk \
+        next-display-app \
         motd-belaybox \
         docker-moby \
         docker-moby-cli \

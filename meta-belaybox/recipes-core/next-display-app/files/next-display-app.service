@@ -1,0 +1,26 @@
+[Unit]
+Description=Next.js Display App Container
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+
+# 1. Run our setup script (will only load on first boot)
+ExecStartPre=/usr/bin/bash /usr/bin/setup-next-display-app.sh
+
+# 2. Cleanup old runs
+ExecStartPre=-/usr/bin/docker rm -f next-display-app
+
+# 3. Launch
+# Using --network host so it can talk to mosquitto on localhost
+ExecStart=/usr/bin/docker run --name=next-display-app \
+  --network host \
+  next-display-app
+
+ExecStop=/usr/bin/docker stop next-display-app
+
+[Install]
+WantedBy=graphical.target

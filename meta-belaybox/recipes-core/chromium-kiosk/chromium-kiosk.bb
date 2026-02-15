@@ -15,8 +15,10 @@ S = "${WORKDIR}"
 SYSTEMD_SERVICE:${PN} = "chromium-kiosk.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
-# We need bash for our build script and docker/weston at runtime
-RDEPENDS:${PN} += "bash docker-moby weston-init"
+CHROMIUM_KIOSK_URL ?= "http://localhost:3000"
+
+# We need bash for our setup script and docker/weston at runtime
+RDEPENDS:${PN} += "bash docker-moby weston-init next-display-app"
 
 do_install() {
     # Install the Dockerfile for the first-boot build
