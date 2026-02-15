@@ -9,6 +9,7 @@ Restart=always
 RestartSec=5
 
 # 1. Run our setup script (will only load on first boot)
+ExecStartPre=/usr/bin/psplash-write "MSG Preparing Next.js App..." || true
 ExecStartPre=/usr/bin/bash /usr/bin/setup-next-display-app.sh
 
 # 2. Cleanup old runs
