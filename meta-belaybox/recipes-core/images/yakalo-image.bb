@@ -23,7 +23,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
         weston \
         weston-init \
         mesa \
-        mesa-demos \
         kernel-modules \
         linux-firmware-rpidistro-bcm43455 \
 "
