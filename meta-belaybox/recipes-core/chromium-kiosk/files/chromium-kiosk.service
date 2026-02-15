@@ -9,7 +9,7 @@ Restart=always
 RestartSec=5
 
 # 1. Run our setup script (will only load on first boot)
-ExecStartPre=/usr/bin/psplash-write "MSG Starting Chromium Kiosk..." || true
+ExecStartPre=-/usr/bin/psplash-write "MSG Starting Chromium Kiosk..."
 ExecStartPre=/usr/bin/bash /usr/bin/build-chromium.sh
 
 # 2. Cleanup old runs
@@ -44,7 +44,7 @@ ExecStart=/usr/bin/docker run --name=chromium \
   --kiosk \
   --incognito \
   "${KIOSK_URL}"
-ExecStartPost=/usr/bin/psplash-write "QUIT" || true
+ExecStartPost=-/usr/bin/psplash-write "QUIT"
 
 ExecStop=/usr/bin/docker stop chromium
 

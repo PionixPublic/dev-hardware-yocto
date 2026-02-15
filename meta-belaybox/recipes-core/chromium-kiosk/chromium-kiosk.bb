@@ -15,7 +15,7 @@ S = "${WORKDIR}"
 SYSTEMD_SERVICE:${PN} = "chromium-kiosk.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
-CHROMIUM_KIOSK_URL ?= "http://localhost:3000"
+CHROMIUM_KIOSK_URL ?= "http://172.17.0.1:3000"
 
 # We need bash for our setup script and docker/weston at runtime
 RDEPENDS:${PN} += "bash docker-moby weston-init next-display-app"
