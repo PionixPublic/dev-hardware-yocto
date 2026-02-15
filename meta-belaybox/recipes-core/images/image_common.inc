@@ -34,6 +34,7 @@ COMMON_PACKAGES = " \
         lsof \
         rauc-init \
         rauc-backend \
+        systemd-wait-online-config \
         init-service \
         overlayfs \
         minicom \
