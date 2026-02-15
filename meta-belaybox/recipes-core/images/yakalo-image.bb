@@ -45,6 +45,7 @@ IMAGE_INSTALL:append = " psplash"
 IMAGE_FEATURES += " splash "
 COPY_LIC_MANIFEST = "1"
 
+
 # these should not be missing anymore nowadays (python3-iso15118 should have proper dependencies)
 # pip3 install environs pydantic aiofile py4j
 
