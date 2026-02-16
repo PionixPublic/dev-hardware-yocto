@@ -59,6 +59,7 @@ COMMON_PACKAGES = " \
         rc-utils \
         htt-util \
         lighttpd \
+        dnsmasq \
         wireguard-tools \
         gdb \
         open-plc-utils \
