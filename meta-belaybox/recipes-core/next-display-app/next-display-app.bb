@@ -10,7 +10,7 @@ SRC_URI = " \
     file://setup-next-display-app.sh \
 "
 
-SRCREV = "a0e6d3eb8ca9ca94d1a9f699095b5112bb3a958b"
+SRCREV = "cf8b780887a610f9f08c136d77bf6f7562f88e03"
 
 S = "${WORKDIR}/git"
 
