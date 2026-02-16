@@ -68,4 +68,6 @@ COMMON_PACKAGES = " \
 	tpm2-tss \
 	tpm2-abrmd \
 	libtss2-tcti-device \
+        avahi-daemon \
+        avahi-utils \
 "
