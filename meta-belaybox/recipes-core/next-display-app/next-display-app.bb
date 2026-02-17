@@ -62,7 +62,12 @@ do_install() {
     # Install the setup script
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/setup-next-display-app.sh ${D}${bindir}/setup-next-display-app.sh
+    
+    # Calculate hash of the actual tarball to detect changes during OTA
+    IMAGE_SHA=$(sha256sum ${WORKDIR}/next-display-app.tar | cut -d' ' -f1)
+    
     sed -i 's|@DATADIR@|${datadir}|g' ${D}${bindir}/setup-next-display-app.sh
+    sed -i "s|@IMAGE_VERSION@|$IMAGE_SHA|g" ${D}${bindir}/setup-next-display-app.sh
 
     # Install the systemd service
     install -d ${D}${systemd_system_unitdir}
