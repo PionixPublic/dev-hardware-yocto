@@ -4,7 +4,7 @@ SRC_URI = " \
 	file://tpm-slb9670-overlay.dts \
 	file://mcp2515-can0-spi1-overlay.dts \
 "
-COMPATIBLE_MACHINE = "raspberrypi4"
+COMPATIBLE_MACHINE = "raspberrypi4|raspberrypi5"
 
 inherit devicetree
 

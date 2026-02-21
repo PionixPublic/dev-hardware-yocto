@@ -8,3 +8,5 @@ do_install:append() {
     install -d ${D}${systemd_system_unitdir}/dnsmasq.service.d
     install -m 0644 ${WORKDIR}/10-wait-for-end0.conf ${D}${systemd_system_unitdir}/dnsmasq.service.d/10-wait-for-end0.conf
 }
+
+FILES:${PN} += "${systemd_system_unitdir}/dnsmasq.service.d/*"
