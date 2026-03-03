@@ -41,6 +41,9 @@ dtoverlay=i2c-rtc,pcf85063,i2c_csi_dsi,addr=0x51
 dtparam=ant2
 
 [all]
+arm_freq=800
+arm_freq_min=800
+gpu_freq=350
 arm_64bit=0
 dtoverlay=disable-bt
 enable_uart=1
