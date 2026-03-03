@@ -1,0 +1,35 @@
+[Unit]
+Description=Wetty Docker Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+
+# 1. Run our setup script (will only load if updated or missing)
+ExecStartPre=-/usr/bin/psplash-write "MSG Preparing Wetty..."
+ExecStartPre=/usr/bin/bash /usr/bin/setup-wetty.sh
+
+# 2. Cleanup old runs
+ExecStartPre=-/usr/bin/docker rm -f wetty
+
+# 3. Launch
+# Using the command provided by the user
+ExecStart=/usr/bin/docker run --name wetty \
+  -p 4000:4000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  wettyoss/wetty \
+  --port 4000 \
+  --ssh-pass belaybox \
+  --ssh-user root \
+  --force-ssh \
+  --ssh-host "172.17.0.1" \
+  --allow-iframe \
+  -c "journalctl -fu everest -n 100 --output cat"
+
+ExecStop=/usr/bin/docker stop wetty
+
+[Install]
+WantedBy=graphical.target

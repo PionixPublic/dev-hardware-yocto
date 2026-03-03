@@ -17,6 +17,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
         everest-belaybox \
         chromium-kiosk \
         next-display-app \
+        wetty \
         motd-belaybox \
         docker-moby \
         docker-moby-cli \
