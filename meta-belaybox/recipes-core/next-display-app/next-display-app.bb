@@ -10,12 +10,14 @@ SRC_URI = " \
     file://setup-next-display-app.sh \
 "
 
-SRCREV = "fbdb31931198fac3f39d548d530421a00d392a8e"
+SRCREV = "0e3e5ba2da2acfac82715743b49ccd162624204c"
 
 S = "${WORKDIR}/git"
 
 SYSTEMD_SERVICE:${PN} = "next-display-app.service"
 SYSTEMD_AUTO_ENABLE = "enable"
+
+NEXT_DISPLAY_APP_THEME ?= "pionix"
 
 # We need bash for our setup script and docker at runtime
 RDEPENDS:${PN} += "bash docker-moby"
@@ -44,6 +46,7 @@ do_compile() {
     # Cross-compile the image. 
     if ! docker buildx build --platform ${DOCKER_PLATFORM} \
         --build-arg NODE_OPTIONS="--max-old-space-size=4096" \
+        --build-arg NEXT_PUBLIC_ENABLED_THEMES=${NEXT_DISPLAY_APP_THEME} --build-arg NEXT_PUBLIC_DEFAULT_THEME=${NEXT_DISPLAY_APP_THEME} \
         -t next-display-app --load ${S}; then
         bberror "Failed to build Next-Display-App image."
         bberror "Please set up docker buildx cross-compilation support on your host."
