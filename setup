@@ -26,7 +26,7 @@ layers = [
     {"rev":"5c602337ea1a80fb7217eeda04e396cf90587dca",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
     {"rev":"a0f4a8b9986954239850b9d4256c003c91e6b931",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"afbbe28cee4af2c6760aaead43a4a3ef29969809",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
-    {"rev":"e0a7ab2e196b589eefb53b12e2f688769f46ab27",  "branch":"main",             "repo":"everest-core",                     "path":"everest-core",       "remote":"github-everest"},
+    {"rev":"2026.02.0",                                 "branch":"release/2026.02.0","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
 ]
 
 #
@@ -39,7 +39,7 @@ import subprocess
 import re
 
 # Use SOURCEROOT environment variable, with a default fallback
-layers_location = os.environ.get("SOURCEROOT", os.path.join("..", "source"))
+layers_location = os.environ.get("SOURCEROOT", os.path.join(".", "source"))
 
 # Ensure layers_location does not end with a slash
 layers_location = os.path.normpath(layers_location)
