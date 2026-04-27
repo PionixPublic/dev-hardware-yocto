@@ -27,7 +27,7 @@ layers = [
     {"rev":"a0f4a8b9986954239850b9d4256c003c91e6b931",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"afbbe28cee4af2c6760aaead43a4a3ef29969809",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
     {"rev":"8b1543e121deda2445f80f74d85c10316d5b31f4",  "branch":"scarthgap",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
-    {"rev":"2026.02.0",                                 "branch":"release/2026.02.0","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
+    {"rev":"08477f3462740a4d19103a2de272d84177888de5",  "branch":"bugfix/pionix_chargebridge_mdns_discovery","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
 ]
 
 #

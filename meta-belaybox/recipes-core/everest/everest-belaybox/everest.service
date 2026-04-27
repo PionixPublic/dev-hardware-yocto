@@ -1,9 +1,7 @@
 [Unit]
 Description=EVerest
-Requires=mosquitto.service
-Requires=network.target
-After=mosquitto.service
-After=network.target
+Requires=mosquitto.service chargebridge.service
+After=mosquitto.service chargebridge.service
 
 [Service]
 Type=simple
@@ -12,7 +10,7 @@ User=root
 LimitCORE=infinity
 ExecCondition=/bin/sh -c "if grep -q 'Compute' /sys/firmware/devicetree/base/model; then exit 0; else exit 1; fi"
 WorkingDirectory=/usr/bin
-ExecStartPre=sleep 10
+ExecStartPre=-/bin/sh -c 'timeout 60 sh -c "until ip link show cb_plc_a > /dev/null 2>&1 && ip link show cb_plc_b > /dev/null 2>&1; do sleep 1; done"'
 ExecStart=/usr/bin/manager --conf /etc/everest/everest.yaml
 
 [Install]

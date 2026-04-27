@@ -14,6 +14,7 @@ SRC_URI = "file://config-belaybox-rpi-pwm.yaml \
            file://everest.service \
            file://everest-rpi.service \
            file://config-sil-rauc.yaml \
+           file://config-CB-SAT-DUAL-AC.yaml \
            "
 PV = "0.1"
 
@@ -31,8 +32,8 @@ do_install() {
     install -m 0644 ${WORKDIR}/config-kilowatt-k2.yaml ${D}${sysconfdir}/everest/
     install -m 0644 ${WORKDIR}/config-belaybox-pnc.yaml ${D}${sysconfdir}/everest/
     install -m 0644 ${WORKDIR}/ocpp16-pnc-config.json ${D}${sysconfdir}/everest/
-    ln -s ${sysconfdir}/everest/config-belaybox-pwm.yaml ${D}${sysconfdir}/everest/everest.yaml
-    ln -s ${sysconfdir}/everest/config-belaybox-rpi-pwm.yaml ${D}${sysconfdir}/everest/everest-rpi.yaml
+    ln -s ${sysconfdir}/everest/config-CB-SAT-DUAL-AC.yaml ${D}${sysconfdir}/everest/everest.yaml
+    install -m 0644 ${WORKDIR}/config-CB-SAT-DUAL-AC.yaml ${D}${sysconfdir}/everest/
     if [ "$BELAYBOX_UNSTABLE" == "1" ]
     then
         install -d ${D}${bindir}

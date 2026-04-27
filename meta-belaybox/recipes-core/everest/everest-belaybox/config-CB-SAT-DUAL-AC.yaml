@@ -1,0 +1,259 @@
+settings:
+  telemetry_enabled: true
+active_modules:
+  auth:
+    config_module:
+      connection_timeout: 60
+      prioritize_authorization_over_stopping_transaction: true
+      selection_algorithm: PlugEvents
+      ignore_connector_faults: true
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: connector_a
+        - implementation_id: evse
+          module_id: connector_b
+      token_provider:
+        - implementation_id: main
+          module_id: token_provider_a
+        - implementation_id: main
+          module_id: token_provider_b
+      token_validator:
+        - implementation_id: main
+          module_id: token_validator
+    module: Auth
+  energy_manager_a:
+    config_module:
+      schedule_interval_duration: 60
+      schedule_total_duration: 10
+      debug: false
+    connections:
+      energy_trunk:
+        - implementation_id: energy_grid
+          module_id: grid_connection_point_a
+    module: EnergyManager
+  energy_manager_b:
+    config_module:
+      schedule_interval_duration: 60
+      schedule_total_duration: 10
+      debug: false
+    connections:
+      energy_trunk:
+        - implementation_id: energy_grid
+          module_id: grid_connection_point_b
+    module: EnergyManager
+  connector_a:
+    config_module:
+      ac_enforce_hlc: false
+      ac_hlc_enabled: false
+      ac_hlc_use_5percent: true
+      ac_nominal_voltage: 230
+      charge_mode: AC
+      connector_id: 1
+      ev_receipt_required: false
+      evse_id: DE*PNX*E12345*1
+      has_ventilation: true
+      payment_enable_contract: false
+      payment_enable_eim: true
+      session_logging: true
+      session_logging_path: /tmp/everest-logs-a
+      session_logging_xml: false
+      switch_3ph1ph_delay_s: 5
+      switch_3ph1ph_cp_state: X1
+    connections:
+      bsp:
+        - implementation_id: main
+          module_id: cb_bsp_a
+      hlc:
+        - implementation_id: charger
+          module_id: iso15118_charger_a
+      slac:
+        - implementation_id: main
+          module_id: slac_a
+      ac_rcd:
+        - implementation_id: rcd
+          module_id: cb_bsp_a
+      connector_lock:
+        - implementation_id: connector_lock
+          module_id: cb_bsp_a
+    module: EvseManager
+    telemetry:
+      id: 1
+  connector_b:
+    config_module:
+      ac_enforce_hlc: false
+      ac_hlc_enabled: false
+      ac_hlc_use_5percent: true
+      ac_nominal_voltage: 230
+      charge_mode: AC
+      connector_id: 2
+      ev_receipt_required: false
+      evse_id: DE*PNX*E12345*2
+      has_ventilation: true
+      payment_enable_contract: false
+      payment_enable_eim: true
+      session_logging: true
+      session_logging_path: /tmp/everest-logs-b
+      session_logging_xml: false
+      switch_3ph1ph_delay_s: 5
+      switch_3ph1ph_cp_state: X1
+    connections:
+      bsp:
+        - implementation_id: main
+          module_id: cb_bsp_b
+      hlc:
+        - implementation_id: charger
+          module_id: iso15118_charger_b
+      slac:
+        - implementation_id: main
+          module_id: slac_b
+      ac_rcd:
+        - implementation_id: rcd
+          module_id: cb_bsp_b
+      connector_lock:
+        - implementation_id: connector_lock
+          module_id: cb_bsp_b
+    module: EvseManager
+    telemetry:
+      id: 2
+  grid_connection_point_a:
+    config_module:
+      fuse_limit_A: 16
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - implementation_id: energy_grid
+          module_id: connector_a
+    module: EnergyNode
+  grid_connection_point_b:
+    config_module:
+      fuse_limit_A: 16
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - implementation_id: energy_grid
+          module_id: connector_b
+    module: EnergyNode
+  iso15118_charger_a:
+    config_module:
+      device: cb_plc_a
+      tls_security: prohibit
+      supported_DIN70121: false
+    connections: {}
+    module: EvseV2G
+    connections:
+      security:
+        - module_id: evse_security
+          implementation_id: main
+  iso15118_charger_b:
+    config_module:
+      device: cb_plc_b
+      tls_security: prohibit
+      supported_DIN70121: false
+    connections: {}
+    module: EvseV2G
+    connections:
+      security:
+        - module_id: evse_security
+          implementation_id: main
+  evse_security:
+    module: EvseSecurity
+    config_module:
+      private_key_password: "123456"
+  persistent_store:
+    config_module:
+      sqlite_db_file_path: /tmp/everest_persistent_store.db
+    connections: {}
+    module: PersistentStore
+  slac_a:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: cb_plc_a
+  slac_b:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: cb_plc_b
+  token_provider_a:
+    config_implementation:
+      main:
+        timeout: 10
+        token: DEADBEEF_A
+    connections:
+      evse:
+        - implementation_id: evse
+          module_id: connector_a
+    module: DummyTokenProvider
+  token_provider_b:
+    config_implementation:
+      main:
+        timeout: 10
+        token: DEADBEEF_B
+    connections:
+      evse:
+        - implementation_id: evse
+          module_id: connector_b
+    module: DummyTokenProvider
+  token_validator:
+    config_implementation:
+      main:
+        sleep: 0.25
+        validation_reason: Token seems valid
+        validation_result: Accepted
+    connections: {}
+    module: DummyTokenValidator
+#  token_provider:
+#    module: DummyTokenProvider
+#  token_validator:
+#    config_module:
+#      allowlist_file: /etc/everest/allowlist_rfid_a.txt
+#    module: LocalAllowlistTokenValidator
+  cb_bsp_a:
+    connections: {}
+    module: evse_board_support_API
+  cb_bsp_b:
+    connections: {}
+    module: evse_board_support_API
+
+ # -----------------------------
+  # Added: System + Cloud modules
+  # -----------------------------
+  system:
+    module: Linux_Systemd_Rauc
+    connections:
+      store:
+        - implementation_id: main
+          module_id: persistent_store
+
+#  cloud_connect:
+#    module: PionixCloud
+ ##   connections:
+ #     system:
+ #       - implementation_id: main
+ #         module_id: system
+ #     evse_manager:
+ #       - module_id: connector_a
+ #         implementation_id: evse
+ #     evse_manager:
+ #       - module_id: connector_b
+ #         implementation_id: evse
+ #   config_module:
+ #     service_name: everest
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /tmp/error_history.db
+
+  api:
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: connector_a
+        - implementation_id: evse
+          module_id: connector_b
+      error_history:
+        - module_id: error_history
+          implementation_id: error_history
+    module: API

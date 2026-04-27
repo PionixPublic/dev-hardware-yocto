@@ -1,0 +1,6 @@
+[Match]
+Name=enu1u3
+
+[Network]
+Address=172.20.2.1/24
+DHCP=no
