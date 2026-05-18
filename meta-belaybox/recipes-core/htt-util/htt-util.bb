@@ -14,3 +14,5 @@ DEPENDS = "libgudev"
 RDEPENDS:${PN} += "bash perl"
 
 FILES:${PN} += "${datadir}/bash-completion/*"
+
+EXTRA_OECMAKE += " -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
