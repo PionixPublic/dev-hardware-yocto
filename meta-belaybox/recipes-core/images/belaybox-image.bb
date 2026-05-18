@@ -15,9 +15,6 @@ include image_common.inc
 
 CORE_IMAGE_EXTRA_INSTALL += "\
         ${COMMON_PACKAGES} \
-        display-app \
-        flutter-pi \
-        flutter-engine \
         everest-belaybox \
         motd-belaybox \
 "
