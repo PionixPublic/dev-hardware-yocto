@@ -27,7 +27,7 @@ FILES:${PN} += "${systemd_system_unitdir}/autoinstall@.service"
 
 inherit systemd
 
-SYSTEMD_AUTO_ENABLE:${PN} = "enable"
+SYSTEMD_AUTO_ENABLE:${PN} = "disable"
 SYSTEMD_PACKAGES = "${PN}"
 
 SYSTEMD_SERVICE:${PN} = "autoinstall@.service"
