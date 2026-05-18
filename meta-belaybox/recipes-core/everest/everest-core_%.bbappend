@@ -3,6 +3,7 @@ SRC_URI += "file://tryboot"
 
 # disable the systemd service
 SYSTEMD_SERVICE:${PN} = ""
+SYSTEMD_SERVICE:chargebridge = ""
 
 do_install:append() {
     install -d ${D}${sbindir}
