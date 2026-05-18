@@ -18,8 +18,6 @@ inherit flutter-app
 inherit features_check
 inherit systemd
 
-S = "${WORKDIR}/git"
-
 do_configure[network] = "1"
 do_compile[network] = "1"
 

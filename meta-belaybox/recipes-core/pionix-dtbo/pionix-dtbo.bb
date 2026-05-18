@@ -8,7 +8,7 @@ COMPATIBLE_MACHINE = "raspberrypi4"
 
 inherit devicetree
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 DEPENDS = " dtc-native linux-raspberrypi "
 do_deploy[depends] += "linux-raspberrypi:do_deploy"

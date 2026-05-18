@@ -10,7 +10,7 @@ SRC_URI = " \
     file://chromium-kiosk.service \
 "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 SYSTEMD_SERVICE:${PN} = "chromium-kiosk.service"
 SYSTEMD_AUTO_ENABLE = "enable"
@@ -21,15 +21,15 @@ RDEPENDS:${PN} += "bash docker-moby weston-init"
 do_install() {
     # Install the Dockerfile for the first-boot build
     install -d ${D}${sysconfdir}/chromium-kiosk
-    install -m 0644 ${WORKDIR}/Dockerfile ${D}${sysconfdir}/chromium-kiosk/Dockerfile
+    install -m 0644 ${S}/Dockerfile ${D}${sysconfdir}/chromium-kiosk/Dockerfile
 
     # Install the build script
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/build-chromium.sh ${D}${bindir}/build-chromium.sh
+    install -m 0755 ${S}/build-chromium.sh ${D}${bindir}/build-chromium.sh
 
     # Install the systemd service
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/chromium-kiosk.service ${D}${systemd_system_unitdir}/chromium-kiosk.service
+    install -m 0644 ${S}/chromium-kiosk.service ${D}${systemd_system_unitdir}/chromium-kiosk.service
 }
 
 FILES:${PN} += " \

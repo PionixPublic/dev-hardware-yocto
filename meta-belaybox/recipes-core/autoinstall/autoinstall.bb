@@ -9,15 +9,15 @@ SRC_URI = "file://autoinstall@.service \
            file://99-autoinstall.rules \
           "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install:append() {
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/autoinstall@.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/autoinstall@.service ${D}${systemd_system_unitdir}
     install -d -m 0755 ${D}/usr/bin
-    install -m 0755 ${WORKDIR}/autoinstall.sh ${D}/usr/bin/
+    install -m 0755 ${S}/autoinstall.sh ${D}/usr/bin/
     install -d -m 0755 ${D}/etc/udev/rules.d
-    install -m 0755 ${WORKDIR}/99-autoinstall.rules ${D}/etc/udev/rules.d
+    install -m 0755 ${S}/99-autoinstall.rules ${D}/etc/udev/rules.d
 }
 
 FILES:${PN} += "/usr/bin/ "

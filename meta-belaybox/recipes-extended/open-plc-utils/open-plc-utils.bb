@@ -6,8 +6,6 @@ PACKAGE_STRIP = "no"
 
 RM_WORK_EXCLUDE += "${PN}"
 
-S = "${WORKDIR}/git"
-
 SRC_URI = "git://github.com/qca/open-plc-utils.git;protocol=https;branch=master \
 	   file://0001-slac-fix-cm_mnbc_sound_indicate-not-according-to-spe.patch \
 	   file://0002-slac-fix-RND-field-incorrect-size-inside-session-str.patch \
@@ -39,8 +37,8 @@ do_install() {
 	install -m 0755 pib/setpib ${D}${bindir}
 
 	install -d ${D}${sysconfdir}
-	install -m 0644 ${WORKDIR}/pev.ini ${D}${sysconfdir}/pev.ini
-	install -m 0644 ${WORKDIR}/evse.ini ${D}${sysconfdir}/evse.ini
+	install -m 0644 ${UNPACKDIR}/pev.ini ${D}${sysconfdir}/pev.ini
+	install -m 0644 ${UNPACKDIR}/evse.ini ${D}${sysconfdir}/evse.ini
 }
 
 

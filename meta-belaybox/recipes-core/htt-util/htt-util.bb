@@ -7,8 +7,6 @@ SRC_URI = "git://github.com/MatrixOrbital/HTT-Utility.git;branch=master;protocol
 
 inherit cmake
 
-S = "${WORKDIR}/git"
-
 SRCREV = "ffe5feec0f112e639f32ec7dcf93ab814f2883c3"
 PR = "r0"
 

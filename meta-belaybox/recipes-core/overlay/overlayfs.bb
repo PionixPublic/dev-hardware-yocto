@@ -9,14 +9,14 @@ SRC_URI = "file://overlayfs-init.service \
            file://overlayfs-init.sh \
           "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install() {
     install -d -m 0755 ${D}/overlay
     install -d ${D}${systemd_system_unitdir}
     install -d ${D}/usr/bin
-    install -m 0644 ${WORKDIR}/overlayfs-init.service ${D}${systemd_system_unitdir}
-    install -m 0755 ${WORKDIR}/overlayfs-init.sh ${D}/usr/bin
+    install -m 0644 ${S}/overlayfs-init.service ${D}${systemd_system_unitdir}
+    install -m 0755 ${S}/overlayfs-init.sh ${D}/usr/bin
 }
 
 FILES:${PN} += "/overlay "
