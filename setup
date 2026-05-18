@@ -9,25 +9,26 @@ pionix_forgejo_yocto = "git://forgejo@git.pionix.com/Pionix"
 
 # Add new sources if necessary
 remotes = [
-    {"name": "yocto",         "url": "git://git.yoctoproject.org"},
-    {"name": "openembedded",  "url": "git://git.openembedded.org"},
+    {"name": "yocto",         "url": "https://git.yoctoproject.org"},
+    {"name": "openembedded",  "url": "https://git.openembedded.org"},
     {"name": "github",        "url": "https://github.com"},
     {"name": "github-pionix", "url": "ssh://git@github.com/PionixPro"},
     {"name": "github-everest","url": "https://github.com/EVerest"},
 ]
 
 layers = [
-    {"rev":"2759d8870ea387b76c902070bed8a6649ff47b56",  "branch":"scarthgap",        "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
-    {"rev":"72983ac391008ebceb45edc7a8f0f6d5f4fe715c",  "branch":"scarthgap",        "repo":"poky",                             "path":"poky",               "remote":"yocto"},
-    {"rev":"a81c19915b5b9e71ed394032e9a50fd06919e1cd",  "branch":"scarthgap",        "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
-    {"rev":"2c646d29912dcc873469a57b1c207e1549c5094d",  "branch":"scarthgap",        "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
-    {"rev":"a44882db02a0ed0f149371831bfbe067665eb42b",  "branch":"scarthgap/u-boot", "repo":"meta-lts-mixins",                  "path":"meta-lts-mixins",    "remote":"yocto"},
-    {"rev":"aeb5b71bd25dcaa04221cfdda35a3dd4f309e214",  "branch":"scarthgap",        "repo":"meta-flutter/meta-flutter",        "path":"meta-flutter",       "remote":"github"},
-    {"rev":"5c602337ea1a80fb7217eeda04e396cf90587dca",  "branch":"scarthgap",        "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
-    {"rev":"a0f4a8b9986954239850b9d4256c003c91e6b931",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
-    {"rev":"afbbe28cee4af2c6760aaead43a4a3ef29969809",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
-    {"rev":"8b1543e121deda2445f80f74d85c10316d5b31f4",  "branch":"scarthgap",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
-    {"rev":"2026.02.0",                                 "branch":"release/2026.02.0","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
+    {"rev":"420222862f5a6d95023b8f5f3b7e1808b2264ef9",  "branch":"wrynose",        "repo":"meta-openembedded",                "path":"meta-openembedded",  "remote":"openembedded"},
+    {"rev":"33581c84f3a85008239acbd940501a35de48dc91",  "branch":"yocto-6.0",      "repo":"bitbake",                          "path":"bitbake",            "remote":"openembedded"},
+    {"rev":"42fa856a00ac16b2a7a83d7ecfa60a5be192b16c",  "branch":"yocto-6.0",      "repo":"openembedded-core",                "path":"openembedded-core",  "remote":"openembedded"},
+    {"rev":"904846ae078ee20de073040ebb77c86e19250f56",  "branch":"yocto-6.0",      "repo":"meta-yocto",                       "path":"meta-yocto",         "remote":"yocto"},
+    {"rev":"052c2cf333ecf16fc2ded4c5d09749ebaff8c0c5",  "branch":"wrynose",        "repo":"meta-arm",                         "path":"meta-arm",           "remote":"yocto"},
+    {"rev":"b4603a63b13e052a0f08761697fb5116a394bf64",  "branch":"master" ,        "repo":"meta-raspberrypi",                 "path":"meta-raspberrypi",   "remote":"yocto"},
+    {"rev":"450ea5b3eb5b84c58e71e956c17a23ce1f2335fd",  "branch":"master",         "repo":"meta-flutter/meta-flutter",        "path":"meta-flutter",       "remote":"github"},
+    {"rev":"78c5e12f08198f4f257a9348516d2103cd617c1d",  "branch":"master",         "repo":"kraj/meta-clang",                  "path":"meta-clang",         "remote":"github"},
+    {"rev":"01f7e1bbde162263bcfb93fd5a3bcdd1483f688c",  "branch":"master",         "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
+    {"rev":"925357d25af4534807647d2a1d99e5b6c6df3af4",  "branch":"wrynose",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
+    {"rev":"e1bdfe90563487f0a3253cd4b0d5bb7fa5194d83",  "branch":"wrynose",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
+    {"rev":"main",                                      "branch":"main",           "repo":"EVerest",                          "path":"EVerest",       "remote":"github-everest"},
 ]
 
 #
@@ -40,7 +41,7 @@ import subprocess
 import re
 
 # Use SOURCEROOT environment variable, with a default fallback
-layers_location = os.environ.get("SOURCEROOT", os.path.join(".", "source"))
+layers_location = os.environ.get("SOURCEROOT", os.path.join("..", "source"))
 
 # Ensure layers_location does not end with a slash
 layers_location = os.path.normpath(layers_location)
