@@ -27,7 +27,7 @@ PUBSPEC_APPNAME = "display_app"
 FLUTTER_APPLICATION_INSTALL_PREFIX = "/usr/share/flutter"
 FLUTTER_BUILD_ARGS = "bundle"
 
-REQUIRED_DISTRO_FEATURES= " systemd"
+REQUIRED_DISTRO_FEATURES = " systemd"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 SYSTEMD_SERVICE:${PN} = "display-app.service"
