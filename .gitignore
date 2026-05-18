@@ -7,6 +7,7 @@ build/sstate-cache/*
 build/tmp/*
 build/bitbake-cookerdaemon.log
 build/bitbake.lock
+build/workspace/*
 
 # Prerequisites
 *.d
