@@ -28,7 +28,7 @@ layers = [
     {"rev":"01f7e1bbde162263bcfb93fd5a3bcdd1483f688c",  "branch":"master",         "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"925357d25af4534807647d2a1d99e5b6c6df3af4",  "branch":"wrynose",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
     {"rev":"e1bdfe90563487f0a3253cd4b0d5bb7fa5194d83",  "branch":"wrynose",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
-    {"rev":"main",                                      "branch":"main",           "repo":"EVerest",                          "path":"EVerest",       "remote":"github-everest"},
+    {"rev":"bf015f631047d1bf5e1a107b26572007004cce4c",  "branch":"feature/initial-yocto-wrynose-compatibility", "repo":"EVerest", "path":"EVerest",        "remote":"github-everest"},
 ]
 
 #
