@@ -11,7 +11,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 # Default SRCREV and SRC_URI
 SRC_URI = "git://github.com/PionixPublic/display-app.git;branch=development;protocol=https \
            file://display-app.service \
-          "
+           file://0001-Update-flutter-version-to-the-one-used-in-wrynose.patch \
+           file://0002-TabBarTheme-should-be-TabBarThemeData.patch \
+           "
 SRCREV = "58d56906bf068892a01402d4a96db5fde075d76b"
 
 inherit flutter-app
@@ -34,7 +36,7 @@ SYSTEMD_SERVICE:${PN} = "display-app.service"
 
 do_install:append() {
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/display-app.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/display-app.service ${D}${systemd_system_unitdir}
     ln -sr ${D}${FLUTTER_INSTALL_DIR}/${FLUTTER_SDK_VERSION}/release ${D}${FLUTTER_INSTALL_DIR}/app
 }
 
