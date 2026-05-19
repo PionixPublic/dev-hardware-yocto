@@ -1,0 +1,23 @@
+From 42d604268ce0526b3406da3e61593da2944d0a45 Mon Sep 17 00:00:00 2001
+From: Kai-Uwe Hermann <kai-uwe.hermann@pionix.de>
+Date: Tue, 19 May 2026 16:48:55 +0200
+Subject: [PATCH] TabBarTheme should be TabBarThemeData
+
+Signed-off-by: Kai-Uwe Hermann <kai-uwe.hermann@pionix.de>
+---
+ lib/theme/pionix_theme_provider.dart | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/theme/pionix_theme_provider.dart b/lib/theme/pionix_theme_provider.dart
+index 91818d2..a10919c 100644
+--- a/lib/theme/pionix_theme_provider.dart
++++ b/lib/theme/pionix_theme_provider.dart
+@@ -158,7 +158,7 @@ class PionixThemeProvider {
+         space: 6,
+         thickness: 2,
+       ),
+-      tabBarTheme: TabBarTheme(
++      tabBarTheme: TabBarThemeData(
+         overlayColor:
+             WidgetStateProperty.resolveWith((states) => Colors.transparent),
+         labelColor: scheme.onPrimary,

@@ -10,7 +10,7 @@ PV = "0.1"
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0700 ${WORKDIR}/get_remote_modem_info.sh ${D}${bindir}/get_remote_modem_info.sh
+    install -m 0700 ${UNPACKDIR}/get_remote_modem_info.sh ${D}${bindir}/get_remote_modem_info.sh
 }
 
 FILES:${PN} += "${bindir}/get_remote_modem_info.sh \

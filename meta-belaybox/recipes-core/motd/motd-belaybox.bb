@@ -14,7 +14,7 @@ FILES_${PN} += " motd"
 # Welcome greeting
 do_install() {
     install -d ${D}${sysconfdir}
-    install -m 0644 ${WORKDIR}/motd ${D}${sysconfdir}/motd
+    install -m 0644 ${UNPACKDIR}/motd ${D}${sysconfdir}/motd
     # tag git version
     export GIT_FOLDER="`dirname ${FILE}`"
     echo Version: `git -C ${GIT_FOLDER} describe --dirty --all --long` >> ${D}${sysconfdir}/motd

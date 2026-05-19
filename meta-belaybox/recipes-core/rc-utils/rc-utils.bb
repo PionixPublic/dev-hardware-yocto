@@ -5,8 +5,6 @@ SRC_URI = "git://github.com/raspberrypi/utils.git;branch=master;protocol=https"
 
 inherit cmake
 
-S = "${WORKDIR}/git"
-
 SRCREV = "6b669633d75d22d45d5218e5af6d7a83db52e42c"
 PR = "r0"
 
