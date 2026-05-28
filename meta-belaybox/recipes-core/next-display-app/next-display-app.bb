@@ -10,7 +10,7 @@ SRC_URI = " \
     file://setup-next-display-app.sh \
 "
 
-SRCREV = "0e3e5ba2da2acfac82715743b49ccd162624204c"
+SRCREV = "789d7cb2070ca4254693e203548b21b69f43d2d7"
 
 S = "${WORKDIR}/git"
 
@@ -39,9 +39,9 @@ do_compile() {
     # Patch the Dockerfile on-the-fly to run build steps natively on the host (x86_64)
     # instead of emulating ARM via QEMU. This makes the build ~10x faster and avoids OOM.
     # 1. Base stage runs on host platform
-    sed -i 's|FROM node:20-alpine AS base|FROM --platform=$BUILDPLATFORM node:20-alpine AS base|g' ${S}/Dockerfile
+    sed -i 's|FROM node:22-alpine AS base|FROM --platform=$BUILDPLATFORM node:22-alpine AS base|g' ${S}/Dockerfile
     # 2. Runner stage remains on target platform (arm)
-    sed -i 's|FROM base AS runner|FROM node:20-alpine AS runner|g' ${S}/Dockerfile
+    sed -i 's|FROM base AS runner|FROM node:22-alpine AS runner|g' ${S}/Dockerfile
 
     # Cross-compile the image. 
     if ! docker buildx build --platform ${DOCKER_PLATFORM} \
