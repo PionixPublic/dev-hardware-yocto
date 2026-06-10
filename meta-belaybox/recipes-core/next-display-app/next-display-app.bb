@@ -10,7 +10,7 @@ SRC_URI = " \
     file://setup-next-display-app.sh \
 "
 
-SRCREV = "789d7cb2070ca4254693e203548b21b69f43d2d7"
+SRCREV = "f9c0d46d1d97a9f5378301d992705d6ddd8271eb"
 
 S = "${WORKDIR}/git"
 
@@ -35,7 +35,7 @@ do_compile() {
     esac
 
     bbnote "Building Next-Display-App image for ${DOCKER_PLATFORM}..."
-    
+
     # Patch the Dockerfile on-the-fly to run build steps natively on the host (x86_64)
     # instead of emulating ARM via QEMU. This makes the build ~10x faster and avoids OOM.
     # 1. Base stage runs on host platform
@@ -43,7 +43,7 @@ do_compile() {
     # 2. Runner stage remains on target platform (arm)
     sed -i 's|FROM base AS runner|FROM node:22-alpine AS runner|g' ${S}/Dockerfile
 
-    # Cross-compile the image. 
+    # Cross-compile the image.
     if ! docker buildx build --platform ${DOCKER_PLATFORM} \
         --build-arg NODE_OPTIONS="--max-old-space-size=4096" \
         --build-arg NEXT_PUBLIC_ENABLED_THEMES=${NEXT_DISPLAY_APP_THEME} --build-arg NEXT_PUBLIC_DEFAULT_THEME=${NEXT_DISPLAY_APP_THEME} \
@@ -65,10 +65,10 @@ do_install() {
     # Install the setup script
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/setup-next-display-app.sh ${D}${bindir}/setup-next-display-app.sh
-    
+
     # Calculate hash of the actual tarball to detect changes during OTA
     IMAGE_SHA=$(sha256sum ${WORKDIR}/next-display-app.tar | cut -d' ' -f1)
-    
+
     sed -i 's|@DATADIR@|${datadir}|g' ${D}${bindir}/setup-next-display-app.sh
     sed -i "s|@IMAGE_VERSION@|$IMAGE_SHA|g" ${D}${bindir}/setup-next-display-app.sh
 
