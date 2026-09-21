@@ -1,0 +1,83 @@
+From 80b3de511bdf1a3531d4c49120fd2b6d9e7e9fda Mon Sep 17 00:00:00 2001
+From: Cornelius Claussen <cornelius.claussen@pionix.com>
+Date: Mon, 21 Sep 2026 16:37:49 +0000
+Subject: [PATCH] fix: follow EVerest's renamed external API topics
+
+The error history is fetched over EVerest's external API, whose topic
+layout changed from
+
+    basecamp/api/1.0/<api type>/<module id>/{b2m,m2b}/<var>
+
+to
+
+    everest_api/<version>/<api type>/<module id>/{e2m,m2e}/<var>
+
+(see Topics.cpp in everest_api_types: api_base "everest_api", api_out
+"e2m", api_in "m2e"; error_history_consumer_API declares api type
+"error_history_consumer" at version 1). Nothing answered the old poll
+topic any more, so the error screen stayed empty.
+
+In the same move ErrorObject::sub_type became optional and is omitted
+from the JSON when unset. `json["sub_type"] as String` then throws, and
+because the try/catch in parseErrors wraps the whole loop a single error
+without a sub type discarded the entire list. Default it to "".
+
+Finally, basecamp-control.service is called everest-control.service
+these days; only the button label was stale, the command it publishes
+(everest_api/control/cmd/restart) was always correct.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ lib/screens/control.dart       |  2 +-
+ lib/widgets/errors_widget.dart | 15 ++++++++++-----
+ 2 files changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/lib/screens/control.dart b/lib/screens/control.dart
+index 27b8a2a..69b1d40 100644
+--- a/lib/screens/control.dart
++++ b/lib/screens/control.dart
+@@ -177,7 +177,7 @@ class _ControlState extends ConsumerState<Control> {
+                     onPressed: () {
+                       mqtt.publish("everest_api/control/cmd/restart", "1");
+                     },
+-                    child: const Text("Restart basecamp-control.service"),
++                    child: const Text("Restart everest-control.service"),
+                   ),
+                   Padding(
+                     padding: const EdgeInsets.symmetric(
+diff --git a/lib/widgets/errors_widget.dart b/lib/widgets/errors_widget.dart
+index a32d09c..dd652e7 100644
+--- a/lib/widgets/errors_widget.dart
++++ b/lib/widgets/errors_widget.dart
+@@ -6,10 +6,15 @@ import 'package:display_app/screens/errors_screen.dart';
+ import 'package:flutter/material.dart';
+ import 'package:async/async.dart';
+ 
+-const String receiveErrorsTopic =
+-    "basecamp/api/1.0/error_history_consumer/error_history_api/b2m/customReceiveErrorTopic";
+-const String pollErrorsTopic =
+-    "basecamp/api/1.0/error_history_consumer/error_history_api/m2b/active_errors";
++/// EVerest builds external API topics as
++/// `everest_api/<version>/<api type>/<module id>/<direction>/<var>`, where m2e
++/// carries commands towards EVerest and e2m carries replies and events out of
++/// it. `error_history_api` is the module id of the error_history_consumer_API
++/// module in the EVerest config.
++const String errorApiBase =
++    "everest_api/1/error_history_consumer/error_history_api";
++const String receiveErrorsTopic = "$errorApiBase/e2m/customReceiveErrorTopic";
++const String pollErrorsTopic = "$errorApiBase/m2e/active_errors";
+ 
+ /// a list of all reported errors
+ List<BasecampError> activeErrors = [];
+@@ -109,7 +114,7 @@ class BasecampError {
+ 
+   BasecampError.fromJson(Map<String, dynamic> json) {
+     type = json["type"] as String;
+-    subType = json["sub_type"] as String;
++    subType = json["sub_type"] as String? ?? "";
+     description = json["description"] as String;
+     message = json["message"] as String;
+     severity = {
+-- 
+2.39.5
+
