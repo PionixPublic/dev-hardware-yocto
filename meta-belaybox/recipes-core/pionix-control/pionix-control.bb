@@ -9,6 +9,7 @@ SRC_URI = "git://git@github.com/PionixPublic/pionix-control.git;branch=main;prot
            file://custom_configs \
            file://setup.yaml \
            file://everest-setup.service \
+           file://0001-fix-adapt-to-paho-mqtt-2.x-callback-API.patch \
            "
 
 S = "${WORKDIR}/git"
