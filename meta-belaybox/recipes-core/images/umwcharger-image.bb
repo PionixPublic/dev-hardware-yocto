@@ -54,6 +54,8 @@ WKS_FILE = "belay-partition-setup.wks.in"
 
 ENABLE_UART="1"
 export BELAYBOX_UPDATE_CHANNEL = "${@'STABLE' if d.getVar('BELAYBOX_UNSTABLE') == '0' else 'UNSTABLE'}"
+# everest_version_file.bbclass (meta-everest) still reads the pre-rename name
+export EVEREST_UPDATE_CHANNEL = "${BELAYBOX_UPDATE_CHANNEL}"
 
 inherit extrausers
 EXTRA_USERS_PARAMS = "\

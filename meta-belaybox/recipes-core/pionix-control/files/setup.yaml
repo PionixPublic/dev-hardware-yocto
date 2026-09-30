@@ -9,6 +9,7 @@ active_modules:
   setup:
     config_module:
       initialized_by_default: true
+      release_metadata_file: everest_release.json
       localization: true
       online_check_host: pionix.com
       setup_simulation: true
