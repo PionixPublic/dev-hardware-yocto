@@ -27,7 +27,7 @@ layers = [
     {"rev":"a0f4a8b9986954239850b9d4256c003c91e6b931",  "branch":"scarthgap",        "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"afbbe28cee4af2c6760aaead43a4a3ef29969809",  "branch":"scarthgap",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
     {"rev":"8b1543e121deda2445f80f74d85c10316d5b31f4",  "branch":"scarthgap",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
-    {"rev":"f2782aab91e3404ac6d9d54fcb1c870fc5172931",  "branch":"testival/charin-09-2026-blomberg-evse","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
+    {"rev":"d78ee7ee6ea3f7cc47f07cd60646956a21566046",  "branch":"testival/charin-09-2026-blomberg-evse","repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
 ]
 
 #
