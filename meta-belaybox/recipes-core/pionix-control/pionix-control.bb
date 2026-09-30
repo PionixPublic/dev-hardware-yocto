@@ -14,6 +14,10 @@ SRC_URI = "git://git@github.com/PionixPublic/pionix-control.git;branch=main;prot
 
 S = "${WORKDIR}/git"
 
+# file:// directories are copied over the previous unpack without removing
+# files that were deleted from the layer, so start from an empty directory
+do_unpack[cleandirs] += "${WORKDIR}/custom_configs"
+
 SRCREV = "c9f864a50c63d6202e03be99c1dcf9ef1a37cd69"
 PR = "r0"
 
@@ -55,6 +59,8 @@ do_install:append() {
     install -d ${D}${sysconfdir}/everest/custom_configs
     install -m 0644 ${S}/pionix-control.service ${D}${systemd_system_unitdir}
     install -m 0644 ${S}/everest-control.service ${D}${systemd_system_unitdir}
+    # upstream falls back to a config that belaybox does not ship
+    sed -i "s|/etc/everest/custom_configs/1_config-dc-dinspec.yaml|/etc/everest/custom_configs/1_CCS_DIN_SPEC_70121-offline.yaml|" ${D}${systemd_system_unitdir}/everest-control.service
     install -m 0644 ${WORKDIR}/everest-setup.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/charger_info.yaml ${D}${sysconfdir}/everest
     install -m 0644 ${WORKDIR}/everest_configs.yaml ${D}${sysconfdir}/everest
