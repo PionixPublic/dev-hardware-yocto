@@ -9,7 +9,7 @@ IMAGE_BOOT_FILES:append = "devicetree/tpm-slb9670-overlay.dtbo;overlays/tpm-slb9
 # IMAGE_CLASSES:append = "populate_lic"
 
 inherit boot_image
-inherit everest_version_file
+inherit belaybox_release_info
 
 include image_common.inc
 
