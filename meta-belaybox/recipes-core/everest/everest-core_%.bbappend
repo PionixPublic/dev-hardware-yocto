@@ -63,18 +63,17 @@ def everest_core_pv(d):
 
 PV = "${@everest_core_pv(d)}"
 
-# disable the systemd services shipped by everest-core; belaybox provides its
-# own everest.service via the everest-belaybox recipe and does not use the
-# chargebridge application
+# belaybox provides its own everest.service via the everest-belaybox recipe, so
+# everest-core's copy is dropped. chargebridge.service and the everest.service.d
+# drop-in (After=chargebridge.service) stay in the chargebridge package, which
+# upstream enables through SYSTEMD_SERVICE:chargebridge.
 SYSTEMD_SERVICE:${PN} = ""
-SYSTEMD_SERVICE:chargebridge = ""
 
 do_install:append() {
     install -d ${D}${sbindir}
     install -m 0755 ${WORKDIR}/tryboot ${D}${sbindir}/
 
-    # remove systemd service
-    rm -rf ${D}${systemd_system_unitdir} ${D}/usr/lib/systemd
+    rm -f ${D}${systemd_system_unitdir}/everest.service
 }
 
 FILES:${PN} += "${sbindir}/tryboot"

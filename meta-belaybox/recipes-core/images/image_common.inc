@@ -22,6 +22,7 @@ COMMON_PACKAGES = " \
         sqlite3 \
         everest-core \
         everest-common \
+        chargebridge \
         libocpp \
         mosquitto \
         fontconfig \
