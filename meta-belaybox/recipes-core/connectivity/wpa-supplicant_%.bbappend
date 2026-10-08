@@ -1,13 +1,14 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI:append = "file://wpa_supplicant.service"
+SRC_URI:append = " file://wpa_supplicant.service"
 
 inherit systemd
 
 # Tell Yocto which service file belongs to this recipe
 SYSTEMD_SERVICE:${PN} = "wpa_supplicant.service"
 
-# Force it to be enabled (creates the symlink to multi-user.target)
+# Enable it: the unit is pulled in by the wlan0 device, so it only starts on
+# modules that have WiFi
 SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install:append() {
