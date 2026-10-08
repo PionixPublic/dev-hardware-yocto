@@ -2,7 +2,7 @@ SUMMARY = "Customization and configuration of the RAUC package"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-PR = "r0"
+PR = "r1"
 INSANE_SKIP:${PN} = "already-stripped usrmerge useless-rpaths arch file-rdeps"
 
 SRC_URI = "file://init-service.service \

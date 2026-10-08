@@ -7,7 +7,6 @@ DefaultDependencies=no
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/systemd-machine-id-setup
-ExecStart=/usr/bin/init-hostname.sh
 ExecStart=/bin/touch /etc/target_init_completed
 
 [Install]
