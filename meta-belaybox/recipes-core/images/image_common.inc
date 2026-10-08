@@ -51,6 +51,15 @@ COMMON_PACKAGES = " \
         tcpdump \
         canutils \
         tmux \
+        bash-completion \
+        bash-completion-extra \
+        systemd-bash-completion \
+        util-linux-bash-completion \
+        iproute2-bash-completion \
+        kmod-bash-completion \
+        udev-bash-completion \
+        tpm2-tools-bash-completion \
+        wireguard-tools-bash-completion \
         iotop \
         iperf3 \
         wireless-regdb-static \
@@ -79,3 +88,7 @@ OVERLAYFS_ETC_CREATE_MOUNT_DIRS = "0"
 OVERLAYFS_ETC_INIT_TEMPLATE = "${BELAYBOX_LAYERDIR}/recipes-core/overlay/files/belaybox-preinit.sh.in"
 # the class does not track the template; rebuild the rootfs when it changes
 do_rootfs[file-checksums] += "${OVERLAYFS_ETC_INIT_TEMPLATE}:True"
+
+# bash instead of /bin/sh as root's login shell, so that ~/.bashrc and the
+# programmable completion (bash-completion) behave as on a desktop distro
+EXTRA_USERS_PARAMS:append = " usermod -s /bin/bash root;"

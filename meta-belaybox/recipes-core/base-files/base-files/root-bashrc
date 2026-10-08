@@ -1,0 +1,18 @@
+# ~/.bashrc: executed by bash for interactive non-login shells (tmux, screen,
+# a nested bash); login shells source it from ~/.profile.
+
+# nothing to do for non-interactive shells
+case $- in
+    *i*) ;;
+    *) return ;;
+esac
+
+export PS1='\u@\h:\w\$ '
+umask 022
+
+# programmable completion (bash-completion package); login shells already get
+# it from /etc/profile.d/bash_completion.sh
+if [ -z "$BASH_COMPLETION_VERSINFO" ] && ! shopt -oq posix \
+    && [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi
