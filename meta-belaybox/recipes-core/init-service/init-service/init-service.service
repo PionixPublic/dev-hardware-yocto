@@ -1,6 +1,6 @@
 [Unit]
 Description=Initializes the target
-After=overlayfs-init.service
+After=local-fs.target
 ConditionPathExists=!/etc/target_init_completed
 DefaultDependencies=no
 

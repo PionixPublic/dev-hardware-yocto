@@ -67,3 +67,14 @@ COMMON_PACKAGES = " \
 	tpm2-abrmd \
 	libtss2-tcti-device \
 "
+
+# Mount the /etc and /var overlays from a preinit script before systemd starts,
+# see recipes-core/overlay/README.md
+IMAGE_FEATURES += "overlayfs-etc"
+OVERLAYFS_ETC_MOUNT_POINT = "/overlay"
+OVERLAYFS_ETC_DEVICE = "/dev/mmcblk0p8"
+OVERLAYFS_ETC_FSTYPE = "ext4"
+OVERLAYFS_ETC_CREATE_MOUNT_DIRS = "0"
+OVERLAYFS_ETC_INIT_TEMPLATE = "${BELAYBOX_LAYERDIR}/recipes-core/overlay/files/belaybox-preinit.sh.in"
+# the class does not track the template; rebuild the rootfs when it changes
+do_rootfs[file-checksums] += "${OVERLAYFS_ETC_INIT_TEMPLATE}:True"
