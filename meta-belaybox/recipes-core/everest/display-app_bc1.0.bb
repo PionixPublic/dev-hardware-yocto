@@ -11,12 +11,21 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 # Default SRCREV and SRC_URI
 SRC_URI = "git://github.com/PionixPublic/display-app.git;branch=development;protocol=https \
            file://display-app.service \
+           file://0001-fix-follow-EVerest-s-renamed-external-API-topics.patch \
           "
 SRCREV = "58d56906bf068892a01402d4a96db5fde075d76b"
 
 inherit flutter-app
 inherit features_check
 inherit systemd
+
+# meta-flutter's pub cache tasks read BB_NUMBER_THREADS to size pbzip2. The
+# variable is in BB_HASHCONFIG_IGNORE_VARS but not in BB_BASEHASH_IGNORE_VARS,
+# so a changed thread count keeps the parse cache valid while the worker's
+# reparse computes a different basehash ("The metadata is not deterministic").
+# Keep it out of the task signatures, as poky does for its own users of it.
+do_archive_pub_cache[vardepsexclude] += "BB_NUMBER_THREADS"
+do_restore_pub_cache[vardepsexclude] += "BB_NUMBER_THREADS"
 
 S = "${WORKDIR}/git"
 

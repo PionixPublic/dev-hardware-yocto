@@ -1,0 +1,207 @@
+settings:
+  telemetry_enabled: false
+active_modules:
+  sniffer:
+    module: PacketSniffer
+    config_module:
+      device: eth1
+      session_logging_path: ""
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: connector_1
+  auth:
+    config_module:
+      connection_timeout: 60
+      prioritize_authorization_over_stopping_transaction: true
+      selection_algorithm: FindFirst
+      ignore_connector_faults: true
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: connector_1
+      token_provider:
+        - implementation_id: main
+          module_id: token_provider
+      token_validator:
+        - implementation_id: main
+          module_id: token_validator
+    module: Auth
+  energy_manager:
+    config_module:
+      switch_3ph1ph_while_charging_mode: Never
+      schedule_interval_duration: 60
+      schedule_total_duration: 10
+      debug: false
+    connections:
+      energy_trunk:
+        - implementation_id: energy_grid
+          module_id: grid_connection_point
+    module: EnergyManager
+  connector_1:
+    config_module:
+      ac_enforce_hlc: true
+      ac_hlc_enabled: true
+      ac_hlc_use_5percent: true
+      ac_nominal_voltage: 230
+      charge_mode: DC
+      connector_id: 1
+      ev_receipt_required: false
+      evse_id: DE*PNX*E12345*1
+      has_ventilation: true
+      payment_enable_contract: false
+      payment_enable_eim: true
+      session_logging: true
+      session_logging_path: /var/everest-logs/session
+      session_logging_xml: false
+      logfile_suffix: 1_DIN_session_uuid
+      switch_3ph1ph_delay_s: 5
+      switch_3ph1ph_cp_state: X1
+      cable_check_wait_below_60V_before_finish: false
+      hack_allow_bpt_with_iso2: true
+    connections:
+      bsp:
+        - implementation_id: board_support
+          module_id: cb_bsp
+      powermeter_car_side:
+        - implementation_id: powermeter
+          module_id: cb_bsp
+      hlc:
+        - implementation_id: charger
+          module_id: iso15118_charger
+      slac:
+        - implementation_id: main
+          module_id: slac
+      powersupply_DC:
+        - module_id: cb_bsp
+          implementation_id: dc_supply
+      imd:
+        - module_id: iso_monitor
+          implementation_id: main
+    module: EvseManager
+    telemetry:
+      id: 1
+  iso_monitor:
+    module: IMDSimulator
+  grid_connection_point:
+    config_module:
+      fuse_limit_A: 16
+      phase_count: 3
+    connections:
+      powermeter:
+        - implementation_id: powermeter
+          module_id: cb_bsp
+      energy_consumer:
+        - implementation_id: energy_grid
+          module_id: external_limits_node
+    module: EnergyNode
+  external_limits_node:
+    config_module:
+      fuse_limit_A: 16
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - implementation_id: energy_grid
+          module_id: connector_1
+    module: EnergyNode
+  iso15118_charger:
+    config_module:
+      device: eth1
+      tls_negotiation_strategy: ENFORCE_NO_TLS
+      enable_tls_key_logging: true
+      tls_key_logging_path: /var/everest-logs
+      logging_path: /var/everest-logs/logs-iso20
+      supported_ISO15118_20: false
+      supported_ISO15118_2: false
+      supported_DIN70121: true
+    module: Evse15118D20
+    connections:
+      security:
+        - module_id: evse_security
+          implementation_id: main
+  system:
+    module: Linux_Systemd_Rauc
+    config_module:
+      RebootCommand: /usr/sbin/tryboot
+    connections:
+      store:
+        - implementation_id: main
+          module_id: persistent_store
+  evse_security:
+    module: EvseSecurity
+    config_module:
+      private_key_password: "123456"
+      csms_ca_bundle: /etc/everest/certs/ca/csms/CSMS_ROOT_CA.pem
+      mf_ca_bundle: /etc/everest/certs/ca/mf/MF_ROOT_CA.pem
+      mo_ca_bundle: /etc/everest/certs/ca/mo/MO_ROOT_CA.pem
+      v2g_ca_bundle: /etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem
+      csms_leaf_cert_directory: /etc/everest/certs/client/csms
+      csms_leaf_key_directory: /etc/everest/certs/client/csms
+      secc_leaf_cert_directory: /etc/everest/certs/client/cso
+      secc_leaf_key_directory: /etc/everest/certs/client/cso
+  persistent_store:
+    config_module:
+      sqlite_db_file_path: /etc/everest/custom_configs/everest_persistent_store.db
+    connections: {}
+    module: PersistentStore
+  slac:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: eth1
+        do_chip_reset: true
+        link_status_detection: true
+  token_provider:
+    config_implementation:
+      main:
+        timeout: 10
+        token: DEADBEEF
+    connections:
+      evse:
+        - implementation_id: evse
+          module_id: connector_1
+    module: DummyTokenProvider
+  token_validator:
+    config_implementation:
+      main:
+        sleep: 0.25
+        validation_reason: Token seems valid
+        validation_result: Accepted
+    connections: {}
+    module: DummyTokenValidator
+  cb_bsp:
+    connections: {}
+    config_module:
+      serial_port: /dev/ttyAMA0
+    module: MicroMegaWattBSP
+  external_limits:
+    connections:
+      energy_node:
+        - implementation_id: external_limits
+          module_id: external_limits_node
+    config_module:
+      cfg_heartbeat_interval_ms: 1000
+      cfg_communication_check_to_s: 0
+    module: external_energy_limits_consumer_API
+  api:
+    module: API
+    config_module:
+      charger_information_file: "/etc/everest/charger_info.yaml"
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: connector_1
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /etc/everest/error_history.db
+  error_history_api:
+    module: error_history_consumer_API
+    config_module:
+      cfg_heartbeat_interval_ms: 0
+      cfg_communication_check_to_s: 0
+    connections:
+      error_history:
+        - implementation_id: error_history
+          module_id: error_history

@@ -9,7 +9,7 @@ IMAGE_BOOT_FILES:append = " devicetree/tpm-slb9670-overlay.dtbo;overlays/tpm-slb
 # IMAGE_CLASSES:append = "populate_lic"
 
 inherit boot_image
-inherit everest_version_file
+inherit belaybox_release_info
 
 include image_common.inc
 
@@ -52,6 +52,8 @@ WKS_FILE = "belay-partition-setup.wks.in"
 
 ENABLE_UART="1"
 export BELAYBOX_UPDATE_CHANNEL = "${@'STABLE' if d.getVar('BELAYBOX_UNSTABLE') == '0' else 'UNSTABLE'}"
+# everest_version_file.bbclass (meta-everest) still reads the pre-rename name
+export EVEREST_UPDATE_CHANNEL = "${BELAYBOX_UPDATE_CHANNEL}"
 
 inherit extrausers
 EXTRA_USERS_PARAMS = "\

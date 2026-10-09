@@ -1,9 +1,9 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
-SRC_URI += "file://99-eth1.network"
+SRC_URI += "file://10-plc.link"
 
+# installed to /usr/lib/systemd/network so that udev sees it before any
+# overlay is mounted; poky's systemd-conf already packages that directory
 do_install:append() {
-  install -d ${D}${sysconfdir}/systemd/network/
-  install -m 0644 ${WORKDIR}/99-eth1.network ${D}${sysconfdir}/systemd/network/
+  install -d ${D}${systemd_unitdir}/network/
+  install -m 0644 ${WORKDIR}/10-plc.link ${D}${systemd_unitdir}/network/
 }
-
-FILES:${PN} += " /etc/systemd/network/99-eth1.network "

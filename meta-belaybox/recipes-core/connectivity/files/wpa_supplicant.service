@@ -1,7 +1,9 @@
 [Unit]
 Description=WPA supplicant
+# only on modules with WiFi: started when wlan0 appears, stopped when it goes away
+BindsTo=sys-subsystem-net-devices-wlan0.device
+After=sys-subsystem-net-devices-wlan0.device dbus.service
 Before=network.target
-After=dbus.service
 Wants=network.target
 
 [Service]
@@ -9,5 +11,5 @@ Type=exec
 ExecStart=/usr/sbin/wpa_supplicant -u -Dnl80211 -iwlan0 -c/etc/wpa_supplicant.conf
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sys-subsystem-net-devices-wlan0.device
 Alias=dbus-fi.w1.wpa_supplicant1.service
