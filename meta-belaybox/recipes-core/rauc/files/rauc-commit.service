@@ -1,0 +1,18 @@
+[Unit]
+Description=Make the booted RAUC slot permanent and mark it good
+# The upstream rauc-mark-good.service never runs here, its
+# ConditionKernelCommandLine needs rauc.slot= or bootchooser.active, which our
+# cmdline.txt does not have. Until this has run, tryboot.txt is still pending
+# and the next normal reboot falls back to the previous slot.
+After=multi-user.target rauc.service rauc-init.service everest.service display-app.service
+
+[Service]
+Type=oneshot
+# only commit a slot that came up healthy, otherwise keep the tryboot fallback
+ExecCondition=/bin/sh -c '! systemctl is-failed --quiet everest.service display-app.service'
+ExecStart=/usr/bin/check_system_health.sh
+ExecStart=/usr/bin/rauc status mark-good
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
