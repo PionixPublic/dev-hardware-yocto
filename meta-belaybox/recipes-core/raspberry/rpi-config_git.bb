@@ -12,9 +12,12 @@ FILES:${PN} = "config.txt"
 
 S = "${WORKDIR}"
 
-PR = "r5"
+PR = "r6"
 
 INHIBIT_DEFAULT_DEPS = "1"
+
+# Wi-Fi antenna of the CM4: internal (PCB), external (U.FL) or none (Wi-Fi off)
+WIFI_ANTENNA ??= "external"
 
 inherit deploy nopackages
 
@@ -23,6 +26,14 @@ do_deploy() {
     CONFIG=${DEPLOYDIR}/${BOOTFILES_DIR_NAME}/config.txt
 
     cp ${S}/config.txt $CONFIG
+
+    case "${WIFI_ANTENNA}" in
+        internal) ANTENNA_CONFIG="dtparam=ant1" ;;
+        external) ANTENNA_CONFIG="dtparam=ant2" ;;
+        none)     ANTENNA_CONFIG="dtoverlay=disable-wifi" ;;
+        *) bbfatal "Invalid value for WIFI_ANTENNA [${WIFI_ANTENNA}]. The value for WIFI_ANTENNA can be internal, external or none." ;;
+    esac
+    sed -i "s/^@WIFI_ANTENNA_CONFIG@$/$ANTENNA_CONFIG/" $CONFIG
 }
 
 do_deploy:append() {
@@ -33,5 +44,6 @@ do_deploy:append() {
 
 addtask deploy before do_build after do_install
 do_deploy[dirs] += "${DEPLOYDIR}/${BOOTFILES_DIR_NAME}"
+do_deploy[vardeps] += "WIFI_ANTENNA"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"

@@ -45,8 +45,21 @@ There are a lot of configuration parameters available, however, the most interes
 ```
 # Build with EVERYTHING to synchronized to HEAD revision
 BELAYBOX_UNSTABLE = "1"
+
+# Wi-Fi antenna of the CM4: internal (PCB), external (U.FL) or none (Wi-Fi disabled)
+WIFI_ANTENNA = "external"
 ```
 You can change them to your needs before building.
+
+#### Per-device Wi-Fi antenna override
+`WIFI_ANTENNA` is the default baked into `config.txt`. Each OTA bundle brings its own `config.txt`, so a device that needs a different antenna than the bundle was built with can be overridden on the shared boot partition (`mmcblk0p1`, mounted at `/boot`). This file is never touched by RAUC updates and applies to both slots:
+```
+mount -o remount,rw /boot
+echo "dtparam=ant1" > /boot/antenna.txt   # ant1 = internal, ant2 = external, or dtoverlay=disable-wifi
+mount -o remount,ro /boot
+reboot
+```
+Remove `/boot/antenna.txt` to go back to the build default. Note: a slot installed from an image built before this option existed has no `include antenna.txt` in its `config.txt` and ignores the file (external antenna is hard-coded there).
 
 ### Build the image
 To start building the image you need to source the yocto environment:
