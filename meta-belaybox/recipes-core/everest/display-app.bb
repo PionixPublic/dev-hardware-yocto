@@ -9,10 +9,10 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 # Default SRCREV and SRC_URI
-SRC_URI = "git://github.com/rckstrh/display-app.git;branch=fix/basecamp-api-to-everest-api;protocol=https \
+SRC_URI = "git://github.com/rckstrh/display-app.git;branch=fix/cloud-connector;protocol=https \
            file://display-app.service \
           "
-SRCREV = "a5242b969571e48fecda5a4c4aa1cfed03cdafcb"
+SRCREV = "6a26cd56ddeabd2bf65d47e6ad9239dd16644b7a"
 
 inherit flutter-app
 inherit features_check
@@ -31,7 +31,7 @@ S = "${WORKDIR}/git"
 do_configure[network] = "1"
 do_compile[network] = "1"
 
-PR = "r0"
+PR = "r1"
 
 PUBSPEC_APPNAME = "display_app"
 FLUTTER_APPLICATION_INSTALL_PREFIX = "/usr/share/flutter"
