@@ -1,0 +1,16 @@
+# The QCA7000 PLC link (see 10-plc.link) only carries SLAC and the IPv6
+# link-local traffic of DIN 70121 / ISO 15118; there is no DHCP server on it.
+# Without this file it falls into poky's 80-wired.network, stays "configuring"
+# forever and holds network-online.target for wait-online's full 2 min timeout.
+[Match]
+Driver=qcaspi
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+DHCP=no
+# fe80:: address used by DIN 70121 / ISO 15118
+LinkLocalAddressing=ipv6
+# never take routes from the EV
+IPv6AcceptRA=no
