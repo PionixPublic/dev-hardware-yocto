@@ -12,7 +12,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 SRC_URI = "git://github.com/rckstrh/display-app.git;branch=fix/cloud-connector;protocol=https \
            file://display-app.service \
           "
-SRCREV = "1793e83926eec876a95791a7181e397f94342f3b"
+SRCREV = "1d745d5e3ff4379da1938cfc75475b932e55d905"
 
 inherit flutter-app
 inherit features_check
