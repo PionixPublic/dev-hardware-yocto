@@ -11,11 +11,9 @@ SRC_URI = "git://git@github.com/rckstrh/pionix-control.git;branch=fix/paho2-comp
            file://everest-setup.service \
            "
 
-S = "${WORKDIR}/git"
-
 # file:// directories are copied over the previous unpack without removing
 # files that were deleted from the layer, so start from an empty directory
-do_unpack[cleandirs] += "${WORKDIR}/custom_configs"
+do_unpack[cleandirs] += "${UNPACKDIR}/custom_configs"
 
 SRCREV = "a8a79b205b54f5a307a044bb34ac06244970ef4c"
 PR = "r1"
@@ -62,11 +60,11 @@ do_install:append() {
     install -d ${D}${sysconfdir}/everest
     install -d ${D}${sysconfdir}/everest/custom_configs
     install -m 0644 ${S}/pionix-control.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/everest-setup.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/charger_info.yaml ${D}${sysconfdir}/everest
-    install -m 0644 ${WORKDIR}/everest_configs.yaml ${D}${sysconfdir}/everest
-    install -m 0644 ${WORKDIR}/custom_configs/* ${D}${sysconfdir}/everest/custom_configs/
-    install -m 0644 ${WORKDIR}/setup.yaml ${D}${sysconfdir}/everest
+    install -m 0644 ${UNPACKDIR}/everest-setup.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/charger_info.yaml ${D}${sysconfdir}/everest
+    install -m 0644 ${UNPACKDIR}/everest_configs.yaml ${D}${sysconfdir}/everest
+    install -m 0644 ${UNPACKDIR}/custom_configs/* ${D}${sysconfdir}/everest/custom_configs/
+    install -m 0644 ${UNPACKDIR}/setup.yaml ${D}${sysconfdir}/everest
 }
 
 FILES:${PN} += "${systemd_system_unitdir}/pionix-control.service \
