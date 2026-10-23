@@ -25,6 +25,19 @@ get_mount_and_make_writable() {
 case $1 in
 
   "get-current")
+    # The slot we are running from, NOT the one that is meant to boot next.
+    # RAUC >= 1.15 asks for this before it looks at root= itself, so take it
+    # from the kernel command line (cmdline.txt is switched by set-primary).
+    for arg in $(cat /proc/cmdline); do
+      case "$arg" in
+        root=*) root=${arg#root=} ;;
+      esac
+    done
+    case "$root" in
+      /dev/mmcblk0p5) echo system0; exit 0 ;;
+      /dev/mmcblk0p6) echo system1; exit 0 ;;
+    esac
+    # unknown root=, best effort
     if [ -f "/factory_data/rauc/primary" ]; then
        cat /factory_data/rauc/primary
        exit 0
