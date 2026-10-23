@@ -176,3 +176,10 @@ fill_image_placeholders() {
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "fill_image_placeholders; "
+
+# Remote root access (ssh as root with the password set via EXTRA_USERS_PARAMS
+# in the image recipes). scarthgap got this from "debug-tweaks" in the weakly
+# assigned EXTRA_IMAGE_FEATURES of build/conf/local.conf; wrynose split that
+# feature up, so request what is needed from the image itself instead of
+# relying on a local.conf that can be overridden.
+IMAGE_FEATURES += "ssh-server-openssh allow-root-login"
