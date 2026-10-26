@@ -49,6 +49,14 @@ python do_belaybox_release_info() {
 
     with open(release_file, 'w', encoding='utf-8') as f:
         json.dump(release, f, indent=2)
+
+    # The Setup module tells the display app where to find this file, and its
+    # release_metadata_file option defaults to release.json (the name an
+    # everest-core CMake install would use), so provide it under that name too
+    setup_default = os.path.join(os.path.dirname(release_file), 'release.json')
+    if os.path.lexists(setup_default):
+        bb.fatal("%s already exists in the rootfs" % setup_default)
+    os.symlink(os.path.basename(release_file), setup_default)
 }
 
 # must run after do_everest_generate_version, which is appended by the class
