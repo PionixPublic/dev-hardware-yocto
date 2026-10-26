@@ -38,7 +38,11 @@ dtoverlay=mcp2515-can0-spi1,oscillator=16000000,interrupt=24,spimaxfrequency=100
 dtoverlay=tpm-slb9670
 dtoverlay=dwc2,dr_mode=host
 dtoverlay=i2c-rtc,pcf85063,i2c_csi_dsi,addr=0x51
-dtparam=ant2
+# Wi-Fi antenna, set by WIFI_ANTENNA in local.conf (internal/external/none).
+@WIFI_ANTENNA_CONFIG@
+# Per-device override on the boot partition, survives OTA, e.g.:
+# echo dtparam=ant1 > /boot/antenna.txt
+include antenna.txt
 
 [all]
 arm_64bit=0
