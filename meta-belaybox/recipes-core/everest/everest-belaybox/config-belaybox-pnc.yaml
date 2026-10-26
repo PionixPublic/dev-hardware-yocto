@@ -197,3 +197,12 @@ active_modules:
       secc_leaf_key_directory: /etc/everest/certs/client/cso
       secc_leaf_cert_directory: /etc/everest/certs/client/cso
       v2g_ca_bundle: /etc/everest/certs/ca/v2g/V2G_ROOT_CA.pem
+  evse_manager_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: evse_manager_consumer_API
+    connections:
+      evse_manager:
+        - module_id: evse_manager
+          implementation_id: evse

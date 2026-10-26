@@ -20,6 +20,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
         flutter-engine \
         everest-belaybox \
         motd-belaybox \
+        cloudconnector \
 "
 
 PACKAGE_EXCLUDE += " \

@@ -1,0 +1,140 @@
+$schema: 'https://cloud.pionix.com/api/pluginRegistry/cloudconnector/merged-schema?ccRef=cr.pionix.com%2Fpionixpublic%2Fcloud-connector%3Astable-static&pluginRef=cr.pionix.com%2Fpionixpublic%2Fcc-plugin-everest-2026_02%3Astable-static&pluginRef=cr.pionix.com%2Fpionixpublic%2Fcc-plugin-est%3Astable-static&pluginRef=cr.pionix.com%2Fpionixpublic%2Fcc-plugin-remote-ssh%3Astable-static&pluginRef=cr.pionix.com%2Fpionixpublic%2Fcc-plugin-mqtt-bridge%3Astable-static&pluginRef=cr.pionix.com%2Fpionixpublic%2Fcc-plugin-systemd%3Astable-static&pluginRef=cr.pionix.com%2Fpionixpublic%2Fcc-plugin-rauc-updater%3Astable-static'
+schema_version: 1
+config_revision: "1.0.0"
+device:
+  installation:
+    cloud_connector:
+      name: "cloud-connector"
+      directory: "/opt/cloud-connector"
+    tag: "stable-static"
+    persistence:
+      type: "systemd"
+      service_name: "cloud-connector"
+    registry: "cr.pionix.com/pionixpublic"
+  identity:
+    identity_type: "id_file"
+    filepath: "/etc/machine-id"
+    hash_function: "sha256_base32_crockford"
+  device_model:
+    info:
+      model: "BelayBox"
+      manufacturer: "Pionix"
+    parts:
+      software:
+        description: "Pionix software stack"
+        parts:
+          cloudConnector:
+            description: "Pionix cloud-connector"
+cloud_connector:
+  database:
+    directory: "/var/lib/cloud-connector"
+    max_backups_per_namespace: 3
+  ipc:
+    admin_group: "cloud-connector"
+    max_connections: 10
+  mqtt:
+    cloud:
+      keepalive_seconds: 60
+      tls:
+        client_credentials:
+          cert_file: "client.crt"
+          directory: "/var/lib/cloud-connector/certs"
+          key_file: "client.key"
+        trust:
+          ca_file: "/etc/ssl/certs/ca-certificates.crt"
+      address: "mqtt.cloud.pionix.com:8883"
+  runtime:
+    reboot_jitter_max_secs: 0
+  telemetry:
+    scrape_interval_secs: 10
+  plugins:
+    directory: "/opt/cloud-connector/plugins"
+    libraries:
+      - id: "everest-api"
+        enabled: true
+        source:
+          type: "oci"
+          name: "cc-plugin-everest-2026_02"
+        config:
+          everest:
+            config_dir: "/etc/everest"
+            config_symlink: "/etc/everest/everest.yaml"
+            include_rfid_token_value: false
+            mqtt:
+              allow_remote_plaintext: false
+              enabled: true
+              keepalive_seconds: 3600
+              max_packet_size_bytes: 1048576
+              port: 1883
+              server: "127.0.0.1"
+            restart_on_config_switch: false
+            systemd_service_name: "everest.service"
+      - id: "est-enrollment"
+        enabled: true
+        source:
+          type: "oci"
+          name: "cc-plugin-est"
+        config:
+          cert_expiry_warning_days: 7
+          cert_renew_check_interval_s: 3600
+          cert_renew_threshold_days: 30
+          rotate_key: true
+          validate_host_certificate: true
+          hostname: "est.cloud.pionix.com:8443"
+      - id: "remote-ssh"
+        enabled: true
+        source:
+          type: "oci"
+          name: "cc-plugin-remote-ssh"
+        config:
+          allowed_public_keys: null
+          default_ttl_seconds: 43200
+          relay_identity_key: "/var/lib/cloud-connector/remote-ssh/relay_key"
+          remote_cwd: null
+          remote_user: "root"
+          sftp_enable: true
+          shell:
+            login: true
+            path: null
+      - id: "mqtt-bridge"
+        enabled: true
+        source:
+          type: "oci"
+          name: "cc-plugin-mqtt-bridge"
+        config:
+          allow_remote_plaintext: false
+          allowed_topic_prefixes: []
+          forbidden_topic_prefixes:
+            - "$SYS/"
+          local_broker_host: "127.0.0.1"
+          local_broker_port: 1883
+          local_broker_socket: ""
+          max_packets_per_second: 50
+          max_payload_bytes: 65536
+          max_subscriptions: 20
+          mqtt_telemetry_enabled: false
+      - id: "systemd"
+        enabled: true
+        source:
+          type: "oci"
+          name: "cc-plugin-systemd"
+        config:
+          journalctl_bin: "journalctl"
+          log_units: []
+          max_lines: 50000
+          monitor_units: []
+          poll_interval_secs: 10
+          report_host_info: false
+          report_time_info: false
+      - id: "rauc-updater"
+        enabled: true
+        source:
+          type: "oci"
+          name: "cc-plugin-rauc-updater"
+        config:
+          post_reboot_health_check:
+            command: null
+            disable_rauc_mark_if_health_check_unset: false
+            ensure_healthy_systemd_services: []
+            timeout_secs: 30
+          reboot_command: null
