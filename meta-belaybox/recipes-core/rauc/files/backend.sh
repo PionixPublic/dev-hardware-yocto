@@ -72,7 +72,7 @@ case $1 in
           sed -i 's/mmcblk0p5/mmcblk0p6/g' "$boot/system1/cmdline.txt"
         fi
         # now create the new boot env
-        create_boot "$boot_b" $2
+        create_boot "$boot_a" $2
         cp "$boot_a/start4cd.elf" "$boot/0strt4cd.elf"
         cp "$boot_a/fixup4cd.dat" "$boot/0fxup4cd.dat"
         cp "$boot_a/config.txt" "$boot/tryboot_tmp.txt"
