@@ -8,8 +8,12 @@ After=multi-user.target rauc.service rauc-init.service everest.service display-a
 
 [Service]
 Type=oneshot
-# only commit a slot that came up healthy, otherwise keep the tryboot fallback
-ExecCondition=/bin/sh -c '! systemctl is-failed --quiet everest.service display-app.service'
+# Only commit a slot that came up healthy, otherwise keep the tryboot fallback.
+# everest and display-app use Restart=always, so a crash loop never shows up as
+# "failed"; the gate waits (bounded) for both to be up and stable instead.
+Environment=HEALTH_GATE_TIMEOUT=300 HEALTH_GATE_SETTLE=20 HEALTH_GATE_MAX_RESTARTS=3
+TimeoutStartSec=420
+ExecCondition=/usr/bin/belaybox-health-gate.sh
 ExecStart=/usr/bin/check_system_health.sh
 ExecStart=/usr/bin/rauc status mark-good
 RemainAfterExit=yes
