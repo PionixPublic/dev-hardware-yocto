@@ -1,0 +1,28 @@
+# The EVerest charging stack, the same unit on every hardware target. Target
+# specifics (start conditions, delays, start limits) are drop-ins in
+# everest.service.d, shipped by the everest-service-<target> packages.
+#
+# The config is /etc/everest/everest.yaml unless EVEREST_CONFIG is set in
+# /etc/everest/everest_environment.env (pionix-control switches configs that way).
+# /etc/everest/selected-everest points to /usr, change it to e.g. /var/everest to
+# run a development build.
+[Unit]
+Description=EVerest
+Requires=mosquitto.service
+Requires=network.target
+After=mosquitto.service
+After=network.target
+After=chrony.service
+
+[Service]
+Type=simple
+Restart=always
+User=root
+LimitCORE=infinity
+WorkingDirectory=/usr/bin
+Environment=EVEREST_CONFIG=/etc/everest/everest.yaml
+EnvironmentFile=-/etc/everest/everest_environment.env
+ExecStart=/etc/everest/selected-everest/bin/manager --conf ${EVEREST_CONFIG}
+
+[Install]
+WantedBy=multi-user.target
