@@ -10,6 +10,10 @@
 # active, and is still the same process with an unchanged restart counter after a
 # settle period.
 #
+# The same on every hardware target: EVerest always runs as everest.service
+# (common unit, target specifics in everest.service.d drop-ins, see the
+# everest-service recipe), units a target does not have are skipped.
+#
 # Tunables (environment): HEALTH_GATE_TIMEOUT (s, default 300),
 # HEALTH_GATE_SETTLE (s, default 20), HEALTH_GATE_MAX_RESTARTS (default 3),
 # HEALTH_GATE_SERVICES (default "everest.service display-app.service").
@@ -20,7 +24,7 @@ MAX_RESTARTS=${HEALTH_GATE_MAX_RESTARTS:-3}
 SERVICES=${HEALTH_GATE_SERVICES:-"everest.service display-app.service"}
 UP_MARKER="EVerest up and running"
 
-log() { echo "health-gate: $*"; }
+log() { echo "rauc-commit-gate: $*"; }
 
 prop() { systemctl show -p "$2" --value "$1" 2>/dev/null; }
 
