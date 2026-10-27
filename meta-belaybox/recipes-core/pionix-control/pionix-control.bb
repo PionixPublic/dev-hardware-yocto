@@ -18,7 +18,7 @@ S = "${WORKDIR}/git"
 do_unpack[cleandirs] += "${WORKDIR}/custom_configs"
 
 SRCREV = "a8a79b205b54f5a307a044bb34ac06244970ef4c"
-PR = "r0"
+PR = "r1"
 
 DEPENDS += " \
     python3-jinja2 \
@@ -41,6 +41,12 @@ RDEPENDS:${PN} = " \
 
 INSANE_SKIP:${PN} = "already-stripped useless-rpaths arch file-rdeps"
 
+# EVerest itself runs as the common everest.service (everest-service recipe);
+# upstream's everest-control.service is not installed. everest-service-umwcharger
+# takes over its settings and provides everest-control.service as an alias,
+# which pionix-control restarts over D-Bus. It also ships selected-everest.
+RDEPENDS:${PN} += "everest-service-umwcharger"
+
 inherit setuptools3
 inherit systemd
 
@@ -48,7 +54,6 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 SYSTEMD_PACKAGES = "${PN}"
 
 SYSTEMD_SERVICE:${PN} += "pionix-control.service"
-SYSTEMD_SERVICE:${PN} += "everest-control.service"
 SYSTEMD_SERVICE:${PN} += "everest-setup.service"
 
 do_install:append() {
@@ -57,19 +62,14 @@ do_install:append() {
     install -d ${D}${sysconfdir}/everest
     install -d ${D}${sysconfdir}/everest/custom_configs
     install -m 0644 ${S}/pionix-control.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${S}/everest-control.service ${D}${systemd_system_unitdir}
-    # upstream falls back to a config that belaybox does not ship
-    sed -i "s|/etc/everest/custom_configs/1_config-dc-dinspec.yaml|/etc/everest/custom_configs/1_CCS_DIN_SPEC_70121-offline.yaml|" ${D}${systemd_system_unitdir}/everest-control.service
     install -m 0644 ${WORKDIR}/everest-setup.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/charger_info.yaml ${D}${sysconfdir}/everest
     install -m 0644 ${WORKDIR}/everest_configs.yaml ${D}${sysconfdir}/everest
     install -m 0644 ${WORKDIR}/custom_configs/* ${D}${sysconfdir}/everest/custom_configs/
     install -m 0644 ${WORKDIR}/setup.yaml ${D}${sysconfdir}/everest
-    ln -s -r ${D}/usr ${D}/etc/everest/selected-everest
 }
 
 FILES:${PN} += "${systemd_system_unitdir}/pionix-control.service \
-                ${systemd_system_unitdir}/everest-control.service \
                 ${systemd_system_unitdir}/everest-setup.service \
                 ${sysconfdir}/everest/* \
                "
