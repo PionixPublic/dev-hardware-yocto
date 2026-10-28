@@ -6,9 +6,12 @@
 #
 # Restart=always services never reach "failed" while crash looping, so
 # "systemctl is-failed" is not enough. A service is healthy when it is active,
-# (everest) has reported "EVerest up and running" in the run that is currently
-# active, and is still the same process with an unchanged restart counter after a
-# settle period.
+# (EVerest manager instances) has reported "EVerest up and running" in the run
+# that is currently active, and is still the same process with an unchanged
+# restart counter after a settle period. If a service restarts during the settle
+# period (e.g. pionix-control switching the EVerest config), the gate waits for
+# it again instead of failing; HEALTH_GATE_MAX_RESTARTS and HEALTH_GATE_TIMEOUT
+# still bound a crash loop.
 #
 # The same on every hardware target: EVerest always runs as everest.service
 # (common unit, target specifics in everest.service.d drop-ins, see the
@@ -16,23 +19,30 @@
 #
 # Tunables (environment): HEALTH_GATE_TIMEOUT (s, default 300),
 # HEALTH_GATE_SETTLE (s, default 20), HEALTH_GATE_MAX_RESTARTS (default 3),
-# HEALTH_GATE_SERVICES (default "everest.service display-app.service").
+# HEALTH_GATE_SERVICES (default "everest.service everest-setup.service
+# display-app.service").
 
 TIMEOUT=${HEALTH_GATE_TIMEOUT:-300}
 SETTLE=${HEALTH_GATE_SETTLE:-20}
 MAX_RESTARTS=${HEALTH_GATE_MAX_RESTARTS:-3}
-SERVICES=${HEALTH_GATE_SERVICES:-"everest.service display-app.service"}
+SERVICES=${HEALTH_GATE_SERVICES:-"everest.service everest-setup.service display-app.service"}
+# services that run an EVerest manager and must report UP_MARKER
+EVEREST_SERVICES="everest.service everest-setup.service"
 UP_MARKER="EVerest up and running"
 
 log() { echo "rauc-commit-gate: $*"; }
 
 prop() { systemctl show -p "$2" --value "$1" 2>/dev/null; }
 
-# services that are not enabled or were skipped by their ExecCondition are not
-# part of this variant and must not block the commit
+# services that are not enabled or were skipped by their ExecCondition or a
+# Condition* (e.g. everest-setup without /etc/everest/setup.yaml) are not part
+# of this variant and must not block the commit
 required() {
     local svc=$1
     if [ "$(prop "$svc" Result)" = "exec-condition" ]; then
+        return 1
+    fi
+    if [ "$(prop "$svc" ConditionResult)" = no ] && [ "$(prop "$svc" ConditionTimestampMonotonic)" != 0 ]; then
         return 1
     fi
     case "$(systemctl is-enabled "$svc" 2>/dev/null)" in
@@ -55,7 +65,7 @@ check_up() {
         why="$svc restarted ${n} times (max $MAX_RESTARTS)"
         return 1
     fi
-    if [ "$svc" = everest.service ]; then
+    if [[ " $EVEREST_SERVICES " == *" $svc "* ]]; then
         if ! journalctl -b -u "$svc" "_PID=$pid" --no-pager -q 2>/dev/null | grep -qF "$UP_MARKER"; then
             why="$svc (pid $pid) has not reported \"$UP_MARKER\" yet"
             return 1
@@ -74,34 +84,49 @@ for svc in $SERVICES; do
 done
 [ -n "$todo" ] || { log "no services to wait for, healthy"; exit 0; }
 
-why=""
-while :; do
-    ok=1
-    for svc in $todo; do
-        if ! check_up "$svc"; then ok=0; break; fi
+# wait (bounded by TIMEOUT) until all services are up
+wait_up() {
+    local ok svc
+    while :; do
+        ok=1
+        for svc in $todo; do
+            if ! check_up "$svc"; then ok=0; break; fi
+        done
+        [ $ok = 1 ] && return 0
+        if [ "$SECONDS" -ge "$TIMEOUT" ]; then
+            log "FAIL after ${SECONDS}s: $why, not committing the slot"
+            return 1
+        fi
+        sleep 3
     done
-    [ $ok = 1 ] && break
-    if [ "$SECONDS" -ge "$TIMEOUT" ]; then
-        log "FAIL after ${SECONDS}s: $why, not committing the slot"
-        exit 1
-    fi
-    sleep 3
-done
-log "all up after ${SECONDS}s:$todo, settling for ${SETTLE}s"
+}
 
+why=""
 declare -A before
-for svc in $todo; do before[$svc]=$(snapshot "$svc"); done
-sleep "$SETTLE"
-for svc in $todo; do
-    after=$(snapshot "$svc")
-    if [ "$after" != "${before[$svc]}" ]; then
-        log "FAIL: $svc changed (pid restarts) \"${before[$svc]}\" -> \"$after\" during settle, not committing the slot"
+while :; do
+    wait_up || exit 1
+    log "all up after ${SECONDS}s:$todo, settling for ${SETTLE}s"
+
+    for svc in $todo; do before[$svc]=$(snapshot "$svc"); done
+    sleep "$SETTLE"
+    changed=""
+    for svc in $todo; do
+        after=$(snapshot "$svc")
+        if [ "$after" != "${before[$svc]}" ]; then
+            changed="$svc changed (pid restarts) \"${before[$svc]}\" -> \"$after\" during settle"
+            break
+        fi
+        if ! check_up "$svc"; then
+            changed="$why after settle"
+            break
+        fi
+    done
+    [ -z "$changed" ] && break
+    if [ "$SECONDS" -ge "$TIMEOUT" ]; then
+        log "FAIL after ${SECONDS}s: $changed, not committing the slot"
         exit 1
     fi
-    if ! check_up "$svc"; then
-        log "FAIL: $why after settle, not committing the slot"
-        exit 1
-    fi
+    log "$changed, waiting again"
 done
 log "PASS:$todo are up and stable (SECONDS=$SECONDS), committing the slot"
 exit 0
