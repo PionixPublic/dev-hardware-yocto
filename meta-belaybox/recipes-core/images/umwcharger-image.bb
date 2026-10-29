@@ -16,3 +16,5 @@ CORE_IMAGE_EXTRA_INSTALL += "\
 "
 
 IMAGE_HOSTNAME = "umwcharger"
+
+CC_DEVICE_MODEL ?= "uMWCharger"

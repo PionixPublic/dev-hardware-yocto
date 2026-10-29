@@ -6,7 +6,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
         ${DISPLAY_PACKAGES} \
         everest-belaybox \
         motd-belaybox \
-        cloudconnector \
 "
 
 IMAGE_HOSTNAME = "belaybox"

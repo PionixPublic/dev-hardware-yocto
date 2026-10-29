@@ -17,7 +17,7 @@ device:
     hash_function: "sha256_base32_crockford"
   device_model:
     info:
-      model: "BelayBox"
+      model: "@CC_DEVICE_MODEL@"
       manufacturer: "Pionix"
     parts:
       software:

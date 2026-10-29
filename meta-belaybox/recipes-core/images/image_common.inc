@@ -89,7 +89,7 @@ COMMON_PACKAGES = " \
 	libtss2-tcti-device \
 "
 
-CORE_IMAGE_EXTRA_INSTALL += "${COMMON_PACKAGES}"
+CORE_IMAGE_EXTRA_INSTALL += "${COMMON_PACKAGES} cloudconnector"
 CORE_IMAGE_EXTRA_INSTALL += "${@' everest-admin-panel ' if d.getVar('BELAYBOX_UNSTABLE') == '1' else ''}"
 CORE_IMAGE_EXTRA_INSTALL += "${@' everest-node-red-flows ' if d.getVar('BELAYBOX_UNSTABLE') == '1' else ''}"
 
@@ -152,3 +152,20 @@ set_image_hostname() {
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "set_image_hostname; "
+
+# cloudconnector is one package for all images, its config has @VAR@
+# placeholders filled in per image here. Override in local.conf, e.g.
+#   CC_DEVICE_MODEL:pn-umwcharger-image = "MyCharger"
+CC_DEVICE_MODEL ??= "BelayBox"
+CC_CONFIG_FILE = "/opt/cloud-connector/cloud-connector.yaml"
+
+fill_image_placeholders() {
+    sed -i -e 's|@CC_DEVICE_MODEL@|${CC_DEVICE_MODEL}|g' ${IMAGE_ROOTFS}${CC_CONFIG_FILE}
+    for f in ${CC_CONFIG_FILE}; do
+        if grep -n '@[A-Z_]*@' ${IMAGE_ROOTFS}$f; then
+            bbfatal "unfilled placeholder in $f"
+        fi
+    done
+}
+
+ROOTFS_POSTPROCESS_COMMAND += "fill_image_placeholders; "
