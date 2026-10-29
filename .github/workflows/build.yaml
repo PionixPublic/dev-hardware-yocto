@@ -14,10 +14,8 @@ on:
         options:
           - 'all'
           - 'umwcharger-bundle'
-          - 'umwcar-bundle'
           - 'belaybox-bundle'
           - 'umwcharger-image'
-          - 'umwcar-image'
           - 'belaybox-image'
           - 'belaybox-sdk'
       deploy-to-pionix-update-site:
@@ -271,83 +269,6 @@ jobs:
         assets: filename=poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16-${{ github.run_number }}-${{ github.run_attempt }}.sh
         filename: build/tmp/deploy/sdk/poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16.sh
 
-    - name: Build umwcar-bundle
-      id: build-umwcar
-      if: |
-        (github.event_name == 'workflow_dispatch' && 
-         (github.event.inputs.select-specific-buildtargets == 'all' || 
-          github.event.inputs.select-specific-buildtargets == 'umwcar-bundle' || 
-          github.event.inputs.select-specific-buildtargets == '')) ||
-        (github.event_name == 'push')
-      run: |
-        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
-        bitbake umwcar-bundle
-
-    - name: Nexus Repo Publish umwcar-bundle
-      if: steps.build-umwcar.outcome == 'success'
-      uses: sonatype-nexus-community/nexus-repo-github-action@master
-      with:
-        serverUrl: https://nexus.pionix.net
-        username: ${{ secrets.NEXUS_USER }}
-        password: ${{ secrets.NEXUS_PASSWORD }}
-        format: raw
-        repository: umwcar-bundle
-        coordinates: directory=${{ env.RELEASE_CHANNEL }}
-        assets: filename=umwcar-bundle-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.raucb
-        filename: build/tmp/deploy/images/raspberrypi4/umwcar-bundle-raspberrypi4.raucb
-
-    - name: Pionix Cloud Publish Umwcar Bundle
-      if: steps.build-umwcar.outcome == 'success'
-      env:
-        PIONIX_CLOUD_API_KEY: ${{ secrets.PIONIX_CLOUD_API_KEY }}
-      run: |
-        ./pionixcli bundle upload \
-          --edition-id com.pionix.umwcar \
-          --version "${{ github.run_number }}-${{ github.run_attempt }}" \
-          --input build/tmp/deploy/images/raspberrypi4/umwcar-bundle-raspberrypi4.raucb \
-          --release-channel "${{ env.RELEASE_CHANNEL }}"
-
-    - name: Build umwcar-image
-      id: build-umwcar-image
-      if: |
-        (github.event_name == 'workflow_dispatch' && 
-         (github.event.inputs.select-specific-buildtargets == 'all' || 
-          github.event.inputs.select-specific-buildtargets == 'umwcar-image' || 
-          github.event.inputs.select-specific-buildtargets == '')) ||
-        (github.event_name == 'push')
-      run: |
-        . ${{ env.SOURCEROOT }}/poky/oe-init-build-env
-        bitbake umwcar-image
-        echo "Testing the image integrity and showing the SHA256 sum of build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2"
-        bunzip2 -t tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2
-        sha256sum tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2
-
-    - name: Nexus Repo Publish Umwcar Image (wic.bz2)
-      if: steps.build-umwcar-image.outcome == 'success'
-      uses: sonatype-nexus-community/nexus-repo-github-action@master
-      with:
-        serverUrl: https://nexus.pionix.net
-        username: ${{ secrets.NEXUS_USER }}
-        password: ${{ secrets.NEXUS_PASSWORD }}
-        format: raw
-        repository: umwcar-image
-        coordinates: directory=${{ env.RELEASE_CHANNEL }}
-        assets: filename=umwcar-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2
-        filename: build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2
-
-    - name: Nexus Repo Publish Umwcar Image (wic.bmap)
-      if: steps.build-umwcar-image.outcome == 'success'
-      uses: sonatype-nexus-community/nexus-repo-github-action@master
-      with:
-        serverUrl: https://nexus.pionix.net
-        username: ${{ secrets.NEXUS_USER }}
-        password: ${{ secrets.NEXUS_PASSWORD }}
-        format: raw
-        repository: umwcar-image
-        coordinates: directory=${{ env.RELEASE_CHANNEL }}
-        assets: filename=umwcar-image-raspberrypi4-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap
-        filename: build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bmap
-
     - name: Build umwcharger-bundle
       id: build-umwcharger
       if: |
@@ -451,21 +372,6 @@ jobs:
         cp --dereference build/tmp/deploy/sdk/poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16.sh \
           "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/poky-glibc-x86_64-belaybox-image-cortexa7t2hf-neon-vfpv4-raspberrypi4-toolchain-4.0.16-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.sh"
 
-    - name: Assemble umwcar deployment files for pionix-update.de
-      id: prepare_deploy_umwcar
-      if: >
-        (steps.build-umwcar.outcome == 'success' ||
-        steps.build-umwcar-image.outcome == 'success') &&
-        inputs.deploy-to-pionix-update-site == 'yes'
-      run: |
-        echo "Assembling umwcar files in: $LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"
-        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcar-bundle-raspberrypi4.raucb* \
-          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcar-bundle-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.raucb"
-        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bz2* \
-          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcar-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bz2"
-        cp --dereference build/tmp/deploy/images/raspberrypi4/umwcar-image-raspberrypi4.wic.bmap* \
-          "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE/umwcar-image-raspberrypi4-${{ steps.set-version-info.outputs.version_info }}-${{ github.run_number }}-${{ github.run_attempt }}.wic.bmap"
-
     - name: Assemble umwcharger deployment files for pionix-update.de
       id: prepare_deploy_umwcharger
       if: >
@@ -484,7 +390,6 @@ jobs:
     - name: Upload ftp
       if: >
         steps.prepare_deploy_belaybox.outcome == 'success' ||
-        steps.prepare_deploy_umwcar.outcome == 'success' ||
         steps.prepare_deploy_umwcharger.outcome == 'success'
       run: |
         for file in "$LOCAL_DEPLOY_DIR_FOR_PIONIX_UPDATE"/*; do
