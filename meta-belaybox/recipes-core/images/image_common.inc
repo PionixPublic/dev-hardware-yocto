@@ -153,15 +153,20 @@ set_image_hostname() {
 
 ROOTFS_POSTPROCESS_COMMAND += "set_image_hostname; "
 
-# cloudconnector is one package for all images, its config has @VAR@
-# placeholders filled in per image here. Override in local.conf, e.g.
+# cloudconnector and rauc-conf are one package for all images, their configs
+# have @VAR@ placeholders filled in per image here. Override in local.conf, e.g.
 #   CC_DEVICE_MODEL:pn-umwcharger-image = "MyCharger"
+# RAUC_COMPATIBLE must match RAUC_BUNDLE_COMPATIBLE of the image's bundle, both
+# come from <PRODUCT>_RAUC_COMPATIBLE in conf/layer.conf.
 CC_DEVICE_MODEL ??= "BelayBox"
 CC_CONFIG_FILE = "/opt/cloud-connector/cloud-connector.yaml"
+RAUC_COMPATIBLE ??= "${BELAYBOX_RAUC_COMPATIBLE}"
+RAUC_SYSTEM_CONF = "${sysconfdir}/rauc/system.conf"
 
 fill_image_placeholders() {
     sed -i -e 's|@CC_DEVICE_MODEL@|${CC_DEVICE_MODEL}|g' ${IMAGE_ROOTFS}${CC_CONFIG_FILE}
-    for f in ${CC_CONFIG_FILE}; do
+    sed -i -e 's|@RAUC_COMPATIBLE@|${RAUC_COMPATIBLE}|g' ${IMAGE_ROOTFS}${RAUC_SYSTEM_CONF}
+    for f in ${CC_CONFIG_FILE} ${RAUC_SYSTEM_CONF}; do
         if grep -n '@[A-Z_]*@' ${IMAGE_ROOTFS}$f; then
             bbfatal "unfilled placeholder in $f"
         fi
