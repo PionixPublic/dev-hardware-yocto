@@ -11,10 +11,11 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 SRC_URI = "file://everest.service \
            file://10-belaybox.conf \
            file://10-umwcharger.conf \
+           file://everest-umwcharger-env.sh \
            "
 
 S = "${WORKDIR}"
-PR = "r0"
+PR = "r1"
 
 inherit systemd
 
@@ -23,6 +24,8 @@ do_install() {
     install -m 0644 ${WORKDIR}/everest.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/10-belaybox.conf ${D}${systemd_system_unitdir}/everest.service.d/
     install -m 0644 ${WORKDIR}/10-umwcharger.conf ${D}${systemd_system_unitdir}/everest.service.d/
+    install -d ${D}${libexecdir}
+    install -m 0755 ${WORKDIR}/everest-umwcharger-env.sh ${D}${libexecdir}/
     # pionix-control addresses the unit by its upstream name
     ln -s everest.service ${D}${systemd_system_unitdir}/everest-control.service
 
@@ -47,8 +50,9 @@ RCONFLICTS:${PN}-belaybox = "${PN}-umwcharger"
 FILES:${PN}-umwcharger = "${systemd_system_unitdir}/everest.service.d/10-umwcharger.conf \
                           ${systemd_system_unitdir}/everest-control.service \
                           ${sysconfdir}/everest/everest.yaml \
+                          ${libexecdir}/everest-umwcharger-env.sh \
                           "
-RDEPENDS:${PN}-umwcharger = "${PN}"
+RDEPENDS:${PN}-umwcharger = "${PN} sed"
 RCONFLICTS:${PN}-umwcharger = "${PN}-belaybox everest-belaybox"
 
 SYSTEMD_PACKAGES = "${PN}"
