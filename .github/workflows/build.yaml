@@ -51,7 +51,9 @@ env:
   SOURCEROOT: ${{ github.workspace }}/source
   SSTATE_DIR: "${HOME}/data/bitbake.sstate"
   DL_DIR: "${HOME}/data/bitbake.downloads"
-  BB_ENV_PASSTHROUGH_ADDITIONS: "SOURCEROOT DL_DIR SSTATE_DIR OVERWRITE_DISPLAY_APP_REF"
+  # bundle manifest version, must match the --version of "pionixcli bundle upload"
+  FIRMWARE_VERSION: "${{ github.run_number }}-${{ github.run_attempt }}"
+  BB_ENV_PASSTHROUGH_ADDITIONS: "SOURCEROOT DL_DIR SSTATE_DIR OVERWRITE_DISPLAY_APP_REF FIRMWARE_VERSION"
 
 jobs:
   build:
@@ -199,7 +201,7 @@ jobs:
       run: |
         ./pionixcli bundle upload \
           --edition-id com.pionix.belaybox \
-          --version "${{ github.run_number }}-${{ github.run_attempt }}" \
+          --version "${{ env.FIRMWARE_VERSION }}" \
           --input build/tmp/deploy/images/raspberrypi4/belaybox-bundle-raspberrypi4.raucb \
           --release-channel "${{ env.RELEASE_CHANNEL }}"
 
@@ -302,7 +304,7 @@ jobs:
       run: |
         ./pionixcli bundle upload \
           --edition-id com.pionix.umwcharger \
-          --version "${{ github.run_number }}-${{ github.run_attempt }}" \
+          --version "${{ env.FIRMWARE_VERSION }}" \
           --input build/tmp/deploy/images/raspberrypi4/umwcharger-bundle-raspberrypi4.raucb \
           --release-channel "${{ env.RELEASE_CHANNEL }}"
 
