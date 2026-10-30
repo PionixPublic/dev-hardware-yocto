@@ -44,6 +44,8 @@ cloud_connector:
           ca_file: "/etc/ssl/certs/ca-certificates.crt"
       address: "mqtt.cloud.pionix.com:8883"
   runtime:
+    # clean reboot for cloud-requested reboots (unset = sysrq, an unclean reset)
+    reboot_command: "systemctl reboot"
     reboot_jitter_max_secs: 0
   telemetry:
     scrape_interval_secs: 10
@@ -137,4 +139,5 @@ cloud_connector:
             disable_rauc_mark_if_health_check_unset: false
             ensure_healthy_systemd_services: []
             timeout_secs: 30
-          reboot_command: null
+          # boot the slot RAUC just installed (tryboot.txt), see everest-core's tryboot
+          reboot_command: "/usr/sbin/tryboot"
