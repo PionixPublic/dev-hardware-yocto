@@ -1,10 +1,27 @@
 #!/bin/sh
 # Reboot into the slot RAUC armed in tryboot.txt (one shot: the Raspberry Pi
 # firmware goes back to config.txt on the next normal boot).
+# If tryboot.txt is missing or names the slot we already run (e.g. a rollback
+# from a slot that failed its health check), there is nothing to try: reboot
+# normally, the firmware then boots the committed slot from config.txt.
 # The reboot parameter is set through logind, so this also works unprivileged,
 # e.g. for cloud-connector (polkit: org.freedesktop.login1.set-reboot-parameter).
 # "reboot ARG" and "systemctl reboot --reboot-argument" write
 # /run/systemd/reboot-param themselves and need root.
+
+booted=
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        root=/dev/mmcblk0p5) booted=system0 ;;
+        root=/dev/mmcblk0p6) booted=system1 ;;
+    esac
+done
+
+if [ ! -f /boot/tryboot.txt ] || grep -qx "os_prefix=/$booted/" /boot/tryboot.txt; then
+    echo "tryboot: nothing new to try (booted $booted), normal reboot"
+    exec systemctl reboot
+fi
+
 busctl call org.freedesktop.login1 /org/freedesktop/login1 \
     org.freedesktop.login1.Manager SetRebootParameter s "0 tryboot" || exit 1
 exec systemctl reboot
