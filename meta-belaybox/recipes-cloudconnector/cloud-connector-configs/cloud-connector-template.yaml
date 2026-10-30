@@ -135,9 +135,11 @@ cloud_connector:
           name: "cc-plugin-rauc-updater"
         config:
           post_reboot_health_check:
-            command: null
+            # wait for rauc-commit.service: committed -> Installed, refused ->
+            # Mark(bad) and reboot back; must cover its TimeoutStartSec (420 s)
+            command: "/usr/bin/rauc-commit-wait.sh"
             disable_rauc_mark_if_health_check_unset: false
             ensure_healthy_systemd_services: []
-            timeout_secs: 30
+            timeout_secs: 480
           # boot the slot RAUC just installed (tryboot.txt), see everest-core's tryboot
           reboot_command: "/usr/sbin/tryboot"
