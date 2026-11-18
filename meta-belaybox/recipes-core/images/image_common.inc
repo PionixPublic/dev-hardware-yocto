@@ -90,6 +90,11 @@ COMMON_PACKAGES = " \
 CORE_IMAGE_EXTRA_INSTALL += "${COMMON_PACKAGES} cloudconnector"
 CORE_IMAGE_EXTRA_INSTALL += "${@' everest-node-red-flows ' if d.getVar('BELAYBOX_UNSTABLE') == '1' else ''}"
 
+# everest-core recommends everest-mosquitto-config, which runs mosquitto with
+# /etc/mosquitto/everest.conf (socket /run/mosquitto/mosquitto.sock, everest/#
+# denied on TCP). Our configs use /tmp/mosquitto.socket from our mosquitto.conf.
+BAD_RECOMMENDATIONS += "everest-mosquitto-config"
+
 # Packages for the images with a display (flutter display-app)
 DISPLAY_PACKAGES = " \
         display-app \
