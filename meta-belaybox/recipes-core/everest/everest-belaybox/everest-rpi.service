@@ -13,7 +13,7 @@ LimitCORE=infinity
 ExecCondition=/bin/sh -c "if grep -q 'Model' /sys/firmware/devicetree/base/model; then exit 0; else exit 1; fi"
 WorkingDirectory=/usr/bin
 ExecStartPre=sleep 5
-ExecStart=/usr/bin/manager --conf /etc/everest/everest-rpi.yaml
+ExecStart=/usr/bin/manager --config /etc/everest/everest-rpi.yaml
 
 [Install]
 WantedBy=multi-user.target

@@ -21,7 +21,7 @@ User=root
 LimitCORE=infinity
 WorkingDirectory=/usr/bin
 Environment=EVEREST_CONFIG=/etc/everest/everest.yaml
-ExecStart=/etc/everest/selected-everest/bin/manager --conf ${EVEREST_CONFIG}
+ExecStart=/etc/everest/selected-everest/bin/manager --config ${EVEREST_CONFIG}
 
 [Install]
 WantedBy=multi-user.target
