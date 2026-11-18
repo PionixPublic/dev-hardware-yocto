@@ -63,7 +63,8 @@ def everest_core_pv(d):
 
 PV = "${@everest_core_pv(d)}"
 
-# belaybox provides its own everest.service via the everest-belaybox recipe, so
+# everest.service comes from the everest-service recipe (one unit for all
+# hardware targets, target specifics as everest.service.d drop-ins), so
 # everest-core's copy is dropped. chargebridge.service and the everest.service.d
 # drop-in (After=chargebridge.service) stay in the chargebridge package, which
 # upstream enables through SYSTEMD_SERVICE:chargebridge.

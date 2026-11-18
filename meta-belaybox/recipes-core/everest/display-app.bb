@@ -9,10 +9,10 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 # Default SRCREV and SRC_URI
-SRC_URI = "git://github.com/rckstrh/display-app.git;branch=fix/cloud-connector;protocol=https \
+SRC_URI = "git://github.com/rckstrh/display-app.git;branch=fix/poll-online-status;protocol=https \
            file://display-app.service \
           "
-SRCREV = "1d745d5e3ff4379da1938cfc75475b932e55d905"
+SRCREV = "38f8207346f68631161d3f3d9896d18fa581d80e"
 
 inherit flutter-app
 inherit features_check
