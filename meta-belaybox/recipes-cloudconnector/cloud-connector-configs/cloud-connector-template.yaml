@@ -17,7 +17,7 @@ device:
     hash_function: "sha256_base32_crockford"
   device_model:
     info:
-      model: "BelayBox"
+      model: "@CC_DEVICE_MODEL@"
       manufacturer: "Pionix"
     parts:
       software:
@@ -44,6 +44,8 @@ cloud_connector:
           ca_file: "/etc/ssl/certs/ca-certificates.crt"
       address: "mqtt.cloud.pionix.com:8883"
   runtime:
+    # clean reboot for cloud-requested reboots (unset = sysrq, an unclean reset)
+    reboot_command: "systemctl reboot"
     reboot_jitter_max_secs: 0
   telemetry:
     scrape_interval_secs: 10
@@ -133,8 +135,11 @@ cloud_connector:
           name: "cc-plugin-rauc-updater"
         config:
           post_reboot_health_check:
-            command: null
+            # wait for rauc-commit.service: committed -> Installed, refused ->
+            # Mark(bad) and reboot back; must cover its TimeoutStartSec (420 s)
+            command: "/usr/bin/rauc-commit-wait.sh"
             disable_rauc_mark_if_health_check_unset: false
             ensure_healthy_systemd_services: []
-            timeout_secs: 30
-          reboot_command: null
+            timeout_secs: 480
+          # boot the slot RAUC just installed (tryboot.txt), see everest-core's tryboot
+          reboot_command: "/usr/sbin/tryboot"
