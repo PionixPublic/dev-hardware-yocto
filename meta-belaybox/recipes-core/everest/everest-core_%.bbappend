@@ -5,7 +5,8 @@ SRC_URI += "file://tryboot"
 # default to "git", which is what ended up in everest_release.json and the
 # display app. Use the checked out branch and commit instead. setup leaves
 # the checkout on a detached HEAD, so take the branch from the refs that
-# point at it. '/' is not allowed in PV (it ends up in paths and file names).
+# point at it. A tag on the checked out commit (e.g. a release) wins over the
+# branch. '/' is not allowed in PV (it ends up in paths and file names).
 #
 # This reads .git directly instead of running git: PV is also evaluated when
 # the worker re-parses the recipe for fakeroot tasks under pseudo, where git
@@ -27,10 +28,17 @@ def everest_core_pv(d):
     refs = {}
     try:
         with open(os.path.join(gitdir, 'packed-refs')) as f:
+            name = None
             for line in f:
-                if line[0] not in '#^':
-                    rev, name = line.split()
-                    refs[name] = rev
+                if line[0] == '#':
+                    continue
+                if line[0] == '^':
+                    # peeled commit of the annotated tag on the line before
+                    if name:
+                        refs[name] = line[1:].strip()
+                    continue
+                rev, name = line.split()
+                refs[name] = rev
     except OSError:
         pass
     for root, _, files in os.walk(os.path.join(gitdir, 'refs')):
@@ -51,7 +59,9 @@ def everest_core_pv(d):
         remotes = sorted(n.split('/', 3)[3] for n, r in refs.items()
                          if r == rev and n.startswith('refs/remotes/') and n.count('/') >= 3
                          and not n.endswith('/HEAD'))
-        branch = (heads or remotes or [''])[0]
+        tags = sorted(n[len('refs/tags/'):] for n, r in refs.items()
+                      if r == rev and n.startswith('refs/tags/'))
+        branch = (tags or heads or remotes or [''])[0]
 
     if not rev:
         return 'git'
