@@ -12,7 +12,7 @@
 # The cloud reports the booted slot's bundle version, so FIRMWARE_VERSION must
 # be the version the bundle is uploaded with (pionixcli bundle upload --version).
 # RAUC_BUNDLE_COMPATIBLE comes from <PRODUCT>_RAUC_COMPATIBLE (conf/layer.conf),
-# which also sets the compatible in the image's /etc/rauc/system.conf.
+# which also sets the compatible in the image's /usr/lib/rauc/system.conf.
 
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"

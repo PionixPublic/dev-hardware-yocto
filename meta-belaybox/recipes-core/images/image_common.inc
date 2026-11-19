@@ -163,7 +163,7 @@ ROOTFS_POSTPROCESS_COMMAND += "set_image_hostname; "
 CC_DEVICE_MODEL ??= "BelayBox"
 CC_CONFIG_FILE = "/opt/cloud-connector/cloud-connector.yaml"
 RAUC_COMPATIBLE ??= "${BELAYBOX_RAUC_COMPATIBLE}"
-RAUC_SYSTEM_CONF = "${sysconfdir}/rauc/system.conf"
+RAUC_SYSTEM_CONF = "${nonarch_libdir}/rauc/system.conf"
 
 fill_image_placeholders() {
     sed -i -e 's|@CC_DEVICE_MODEL@|${CC_DEVICE_MODEL}|g' ${IMAGE_ROOTFS}${CC_CONFIG_FILE}
