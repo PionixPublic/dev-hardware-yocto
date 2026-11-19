@@ -22,21 +22,21 @@ export BELAYBOX_UNSTABLE
 do_install() {
     install -d ${D}${systemd_system_unitdir}
     install -d ${D}${sysconfdir}/everest
-    install -m 0644 ${WORKDIR}/everest.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/everest-rpi.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/config-belaybox-pwm.yaml ${D}${sysconfdir}/everest/
-    install -m 0644 ${WORKDIR}/config-belaybox-iso.yaml ${D}${sysconfdir}/everest/
-    install -m 0644 ${WORKDIR}/config-belaybox-rpi-pwm.yaml ${D}${sysconfdir}/everest/
-    install -m 0644 ${WORKDIR}/config-belaybox-rpi-iso.yaml ${D}${sysconfdir}/everest/
-    install -m 0644 ${WORKDIR}/config-kilowatt-k2.yaml ${D}${sysconfdir}/everest/
-    install -m 0644 ${WORKDIR}/config-belaybox-pnc.yaml ${D}${sysconfdir}/everest/
-    install -m 0644 ${WORKDIR}/ocpp16-pnc-config.json ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/everest.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/everest-rpi.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/config-belaybox-pwm.yaml ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/config-belaybox-iso.yaml ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/config-belaybox-rpi-pwm.yaml ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/config-belaybox-rpi-iso.yaml ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/config-kilowatt-k2.yaml ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/config-belaybox-pnc.yaml ${D}${sysconfdir}/everest/
+    install -m 0644 ${UNPACKDIR}/ocpp16-pnc-config.json ${D}${sysconfdir}/everest/
     ln -s ${sysconfdir}/everest/config-belaybox-pwm.yaml ${D}${sysconfdir}/everest/everest.yaml
     ln -s ${sysconfdir}/everest/config-belaybox-rpi-pwm.yaml ${D}${sysconfdir}/everest/everest-rpi.yaml
     if [ "$BELAYBOX_UNSTABLE" == "1" ]
     then
         install -d ${D}${bindir}
-        install -m 0644 ${WORKDIR}/config-sil-rauc.yaml ${D}${sysconfdir}/everest/config-sil-rauc.yaml
+        install -m 0644 ${UNPACKDIR}/config-sil-rauc.yaml ${D}${sysconfdir}/everest/config-sil-rauc.yaml
     fi
 }
 

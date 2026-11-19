@@ -6,7 +6,7 @@ SRC_URI:append = " file://mosquitto.conf \
 inherit systemd
 
 do_install:append() {
-    install -m 0644 ${WORKDIR}/mosquitto.conf ${D}${sysconfdir}/mosquitto
+    install -m 0644 ${UNPACKDIR}/mosquitto.conf ${D}${sysconfdir}/mosquitto
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/mosquitto.service ${D}${systemd_system_unitdir}/mosquitto.service
+    install -m 0644 ${UNPACKDIR}/mosquitto.service ${D}${systemd_system_unitdir}/mosquitto.service
 }

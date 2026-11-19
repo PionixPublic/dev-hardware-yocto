@@ -12,5 +12,5 @@ SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install:append() {
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/wpa_supplicant.service ${D}${systemd_system_unitdir}/wpa_supplicant.service
+    install -m 0644 ${UNPACKDIR}/wpa_supplicant.service ${D}${systemd_system_unitdir}/wpa_supplicant.service
 }

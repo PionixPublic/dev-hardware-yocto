@@ -8,13 +8,13 @@ SRC_URI = "file://rauc-init.service \
            file://rauc-init.sh \
           "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install:append() {
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/rauc-init.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/rauc-init.service ${D}${systemd_system_unitdir}
     install -d -m 0755 ${D}/usr/lib/rauc
-    install -m 0755 ${WORKDIR}/rauc-init.sh ${D}/usr/lib/rauc/
+    install -m 0755 ${S}/rauc-init.sh ${D}/usr/lib/rauc/
 }
 
 FILES:${PN} += "/usr/lib/rauc/rauc-init.sh "

@@ -10,7 +10,7 @@ COMPATIBLE_MACHINE = "^rpi$"
 SRC_URI = "file://config.txt "
 FILES:${PN} = "config.txt"
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 PR = "r5"
 

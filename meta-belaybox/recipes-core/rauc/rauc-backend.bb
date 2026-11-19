@@ -15,7 +15,7 @@ SRC_URI = "file://.profile \
            file://check_system_health.sh \
            "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install() {
     install -d -m 0755 ${D}/${bindir}
@@ -25,15 +25,15 @@ do_install() {
     install -d -m 0755 ${D}/usr/lib/rauc
     install -d -m 0755 ${D}/etc/modules-load.d/
     install -d -m 0755 ${D}/etc/udev/mount.blacklist.d
-    install -m 0755 ${WORKDIR}/.profile ${D}/home/root/
-    install -m 0755 ${WORKDIR}/backend.sh ${D}/usr/lib/rauc/
-    install -m 0755 ${WORKDIR}/info-provider.sh ${D}/usr/lib/rauc/
-    install -m 0755 ${WORKDIR}/pre-install.sh ${D}/usr/lib/rauc/
-    install -m 0755 ${WORKDIR}/post-install.sh ${D}/usr/lib/rauc/
-    install -m 0644 ${WORKDIR}/rauc.conf ${D}/etc/modules-load.d/
-    install -m 0644 ${WORKDIR}/raspberrypi-rauc.rules ${D}/etc/udev/mount.blacklist.d/
+    install -m 0755 ${S}/.profile ${D}/home/root/
+    install -m 0755 ${S}/backend.sh ${D}/usr/lib/rauc/
+    install -m 0755 ${S}/info-provider.sh ${D}/usr/lib/rauc/
+    install -m 0755 ${S}/pre-install.sh ${D}/usr/lib/rauc/
+    install -m 0755 ${S}/post-install.sh ${D}/usr/lib/rauc/
+    install -m 0644 ${S}/rauc.conf ${D}/etc/modules-load.d/
+    install -m 0644 ${S}/raspberrypi-rauc.rules ${D}/etc/udev/mount.blacklist.d/
 
-    install -m 0755 ${WORKDIR}/check_system_health.sh ${D}/${bindir}
+    install -m 0755 ${S}/check_system_health.sh ${D}/${bindir}
 }
 
 FILES:${PN} += "/mnt/rauc "

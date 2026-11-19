@@ -10,14 +10,14 @@ SRC_URI = "file://init-service.service \
            file://set-hostname.service \
           "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install() {
     install -d ${D}${systemd_system_unitdir}
     install -d ${D}/usr/bin
-    install -m 0644 ${WORKDIR}/init-service.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/set-hostname.service ${D}${systemd_system_unitdir}
-    install -m 0755 ${WORKDIR}/init-hostname.sh ${D}/usr/bin
+    install -m 0644 ${S}/init-service.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/set-hostname.service ${D}${systemd_system_unitdir}
+    install -m 0755 ${S}/init-hostname.sh ${D}/usr/bin
 }
 
 FILES:${PN} += "${systemd_system_unitdir}/init-service.service"

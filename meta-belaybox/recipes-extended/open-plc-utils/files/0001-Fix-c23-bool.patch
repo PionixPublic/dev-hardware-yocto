@@ -1,0 +1,56 @@
+From 48c66e066b573120bc97868c15dabb1998274399 Mon Sep 17 00:00:00 2001
+From: Kai-Uwe Hermann <kai-uwe.hermann@pionix.de>
+Date: Mon, 18 May 2026 13:02:12 +0200
+Subject: [PATCH] Fix c23 bool
+
+Signed-off-by: Kai-Uwe Hermann <kai-uwe.hermann@pionix.de>
+---
+ tools/types.h | 28 +---------------------------
+ 1 file changed, 1 insertion(+), 27 deletions(-)
+
+diff --git a/tools/types.h b/tools/types.h
+index 45f2d739..5a1ea8d3 100644
+--- a/tools/types.h
++++ b/tools/types.h
+@@ -22,6 +22,7 @@
+  *   system header files;
+  *--------------------------------------------------------------------*/
+ 
++#include <stdbool.h>
+ #include <stdint.h>
+ 
+ /*====================================================================*
+@@ -66,33 +67,6 @@ typedef signed errno_t;
+ typedef signed signo_t;
+ typedef unsigned char byte;
+ 
+-/*====================================================================*
+- *   define C++ style true and false for use in standard C programs;
+- *--------------------------------------------------------------------*/
+-
+-#ifndef __cplusplus
+-
+-#ifdef false
+-# undef false
+-#endif
+-#ifdef true
+-# undef true
+-#endif
+-#ifdef bool
+-# undef bool
+-#endif
+-
+-typedef enum
+-
+-{
+-	false,
+-	true
+-}
+-
+-bool;
+-
+-#endif
+-
+ /*====================================================================*
+  *   cope with structure packing vagaries;
+  *--------------------------------------------------------------------*/
