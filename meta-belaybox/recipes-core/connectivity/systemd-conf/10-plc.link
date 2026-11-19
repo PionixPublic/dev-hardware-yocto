@@ -1,0 +1,11 @@
+# The QCA7000 PLC modem is always eth1: the EVerest configs and
+# get_remote_modem_info.sh refer to it by that name. Without this file its name
+# depends on whether it registers before or after the onboard NIC is renamed
+# from eth0 to end0.
+[Match]
+Driver=qcaspi
+
+[Link]
+Name=eth1
+# as in 99-default.link, which this file replaces for the modem
+MACAddressPolicy=persistent

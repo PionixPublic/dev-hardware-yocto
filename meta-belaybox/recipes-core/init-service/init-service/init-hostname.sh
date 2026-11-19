@@ -1,20 +1,27 @@
 #!/bin/bash
+#
+# Hostname "<base>-<last 8 characters of the CM4 serial number>", e.g. belaybox-a6a2d39e.
+# Runs on every boot (set-hostname.service) and rewrites /etc/hostname when it differs:
+# the image default ("belaybox"), or a stale suffix from an older image that derived it
+# from eth0, which on this image is either missing or the PLC modem with a random MAC.
 
-# Get the last 4 characters of the eth0 MAC address and replace ":" with "_"
-MAC_ADDRESS=$(cat /sys/class/net/eth0/address)
-HOSTNAME_SUFFIX=${MAC_ADDRESS:12}
-HOSTNAME_SUFFIX=$(echo $HOSTNAME_SUFFIX | tr -d ':')
+SERIAL=$(tr -dc '0-9a-fA-F' < /proc/device-tree/serial-number 2>/dev/null | tail -c 8)
+if [ -z "$SERIAL" ]; then
+    echo "No serial number found, keeping the hostname"
+    exit 0
+fi
 
-# New hostname format (HOSTNAME_BASE is taken from environment)
-NEW_HOSTNAME="$(hostname)-$HOSTNAME_SUFFIX"
+CURRENT=$(cat /etc/hostname 2>/dev/null)
+BASE=${CURRENT%%-*}
+BASE=${BASE:-belaybox}
+NEW_HOSTNAME="$BASE-$SERIAL"
 
-# Update /etc/hostname
-echo "$NEW_HOSTNAME" | tee /etc/hostname > /dev/null
+if [ "$CURRENT" = "$NEW_HOSTNAME" ]; then
+    exit 0
+fi
 
-# Update /etc/hosts
+echo "$NEW_HOSTNAME" > /etc/hostname
 sed -i "s/^\(127.0.1.1\s\+\).*/\1$NEW_HOSTNAME/" /etc/hosts
 hostname "$NEW_HOSTNAME"
-hostnamectl set-hostname "$NEW_HOSTNAME"
 
-# Display the new hostname
 echo "Hostname changed to: $NEW_HOSTNAME"

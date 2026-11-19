@@ -11,7 +11,6 @@ SRC_URI = "file://config-belaybox-rpi-pwm.yaml \
            file://config-kilowatt-k2.yaml \
            file://config-belaybox-pnc.yaml \
            file://ocpp16-pnc-config.json \
-           file://everest.service \
            file://everest-rpi.service \
            file://config-sil-rauc.yaml \
            "
@@ -22,7 +21,6 @@ export BELAYBOX_UNSTABLE
 do_install() {
     install -d ${D}${systemd_system_unitdir}
     install -d ${D}${sysconfdir}/everest
-    install -m 0644 ${UNPACKDIR}/everest.service ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/everest-rpi.service ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/config-belaybox-pwm.yaml ${D}${sysconfdir}/everest/
     install -m 0644 ${UNPACKDIR}/config-belaybox-iso.yaml ${D}${sysconfdir}/everest/
@@ -42,14 +40,16 @@ do_install() {
 
 FILES:${PN} += "${datadir}/everest/* \
                 ${sysconfdir}/everest/* \
-                ${systemd_system_unitdir}/everest.service \
                 ${systemd_system_unitdir}/everest-rpi.service \
                 "
 # Define the package
 PACKAGES = "${PN}"
 
+# everest.service is the common unit from everest-service, this pulls in its
+# CM4 drop-in. Plain Raspberry Pi boards run everest-rpi.service from here.
+RDEPENDS:${PN} += "everest-service-belaybox"
+
 inherit systemd
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE:${PN} += "everest.service"
 SYSTEMD_SERVICE:${PN} += "everest-rpi.service"

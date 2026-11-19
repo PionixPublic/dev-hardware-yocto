@@ -1,0 +1,57 @@
+From 7b2d6e7e7f45786b672b7120539dbd752ba5db9a Mon Sep 17 00:00:00 2001
+From: Cornelius Claussen <cornelius.claussen@pionix.com>
+Date: Mon, 21 Sep 2026 16:33:38 +0000
+Subject: [PATCH] fix: adapt to paho-mqtt 2.x callback API
+
+paho-mqtt 2.0 requires a CallbackAPIVersion as the first argument to
+Client(). Passing the client id positionally raises
+
+  ValueError: Unsupported callback API version
+
+at import time, so pionix-control crash-looped on any image shipping
+paho-mqtt >= 2.0 (e.g. Yocto scarthgap, which has 2.0.0). Without
+pionix-control the display app's Control tab lists no EVerest configs
+and its restart buttons do nothing.
+
+Opt into the v2 callback API and adapt the on_connect signature
+accordingly.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ src/pionix_control/pionix_control.py | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/pionix_control/pionix_control.py b/src/pionix_control/pionix_control.py
+index 3a95427..a462fe4 100755
+--- a/src/pionix_control/pionix_control.py
++++ b/src/pionix_control/pionix_control.py
+@@ -19,7 +19,7 @@ import multiprocessing
+ import requests
+ import re
+ import datetime
+-from paho.mqtt import client as mqtt_client
++from paho.mqtt import client as paho_client
+ from threading import Thread
+ import time
+ import dbus
+@@ -28,7 +28,7 @@ import dotenv
+ 
+ log = logging.getLogger("pionix_control")
+ 
+-mqtt_client = mqtt_client.Client("pionix_control")
++mqtt_client = paho_client.Client(paho_client.CallbackAPIVersion.VERSION2, "pionix_control")
+ 
+ pionix_control_config_path = None
+ everest_environment_env_path = None
+@@ -316,7 +316,7 @@ def publish_selected_config():
+     mqtt_client.publish(selected_config_var_topic, cfg)
+ 
+ 
+-def on_connect(mqtt_client, obj, flags, rc):
++def on_connect(mqtt_client, obj, flags, reason_code, properties):
+     log.info("connected")
+     # now publish that control is available
+     pub_thread = Thread(target=publish_repeatedly)
+-- 
+2.39.5
+

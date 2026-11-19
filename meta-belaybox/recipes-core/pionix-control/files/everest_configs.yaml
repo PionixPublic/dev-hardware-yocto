@@ -1,5 +1,5 @@
 # here you can add configs that pionix-control can find
 configs:
-  - /etc/everest/custom_configs/1_config-dc-dinspec.yaml
+  - /etc/everest/custom_configs/1_CCS_DIN_SPEC_70121-offline.yaml
 config_dirs:
   - /etc/everest/custom_configs
