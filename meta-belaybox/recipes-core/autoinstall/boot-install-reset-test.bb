@@ -8,13 +8,13 @@ SRC_URI = "file://test.sh \
            file://test.service \
           "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install:append() {
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/test.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/test.service ${D}${systemd_system_unitdir}
     install -d -m 0755 ${D}/usr/bin
-    install -m 0755 ${WORKDIR}/test.sh ${D}/usr/bin/
+    install -m 0755 ${S}/test.sh ${D}/usr/bin/
 }
 
 FILES:${PN} += "/usr/bin/ "

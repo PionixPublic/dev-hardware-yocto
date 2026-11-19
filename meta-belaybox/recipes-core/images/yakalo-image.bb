@@ -50,7 +50,7 @@ COPY_LIC_MANIFEST = "1"
 
 WKS_FILE = "belay-partition-setup.wks.in"
 
-ENABLE_UART="1"
+ENABLE_UART = "1"
 export BELAYBOX_UPDATE_CHANNEL = "${@'STABLE' if d.getVar('BELAYBOX_UNSTABLE') == '0' else 'UNSTABLE'}"
 
 inherit extrausers
