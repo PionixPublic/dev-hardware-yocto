@@ -163,7 +163,7 @@ ROOTFS_POSTPROCESS_COMMAND += "set_image_hostname; "
 CC_DEVICE_MODEL ??= "BelayBox"
 CC_CONFIG_FILE = "/opt/cloud-connector/cloud-connector.yaml"
 RAUC_COMPATIBLE ??= "${BELAYBOX_RAUC_COMPATIBLE}"
-RAUC_SYSTEM_CONF = "${sysconfdir}/rauc/system.conf"
+RAUC_SYSTEM_CONF = "${nonarch_libdir}/rauc/system.conf"
 
 fill_image_placeholders() {
     sed -i -e 's|@CC_DEVICE_MODEL@|${CC_DEVICE_MODEL}|g' ${IMAGE_ROOTFS}${CC_CONFIG_FILE}
@@ -176,3 +176,10 @@ fill_image_placeholders() {
 }
 
 ROOTFS_POSTPROCESS_COMMAND += "fill_image_placeholders; "
+
+# Remote root access (ssh as root with the password set via EXTRA_USERS_PARAMS
+# in the image recipes). scarthgap got this from "debug-tweaks" in the weakly
+# assigned EXTRA_IMAGE_FEATURES of build/conf/local.conf; wrynose split that
+# feature up, so request what is needed from the image itself instead of
+# relying on a local.conf that can be overridden.
+IMAGE_FEATURES += "ssh-server-openssh allow-root-login"
