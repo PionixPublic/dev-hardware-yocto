@@ -148,3 +148,12 @@ active_modules:
       store:
       - module_id: persistent_store
         implementation_id: main
+  evse_manager_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: evse_manager_consumer_API
+    connections:
+      evse_manager:
+        - module_id: evse_manager
+          implementation_id: evse

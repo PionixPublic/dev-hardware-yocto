@@ -52,14 +52,21 @@ Once the update is installed, reboot with tryboot:
 tryboot
 ```
 
-After the new boot, if everything looks good, do the following (we dont have the System module running which normally does that):
+After the new boot, ``rauc-commit.service`` waits (up to 5 minutes) until ``everest.service`` has reported
+"EVerest up and running" and ``display-app.service`` is up, and both stay up. Only then does it make the slot
+permanent (``check_system_health.sh`` + ``rauc status mark-good``). If they don't come up, nothing is committed
+and the next reboot falls back to the previous version. Check the result with:
 
 ```
-check_system_health.sh
-rauc status mark-good
+journalctl -u rauc-commit -b
 ```
 
-Then it is permanent and will not fall back to the previous version on next boot.
+## EVerest service
+
+EVerest runs as ``everest.service``, the same unit name as on Belaybox. The uMWCharger specifics are in
+``/usr/lib/systemd/system/everest.service.d/10-umwcharger.conf``, see ``systemctl cat everest.service``.
+pionix-control selects the config through ``EVEREST_CONFIG`` in ``/etc/everest/everest_environment.env``.
+``everest-control.service`` (the upstream pionix-control name) is an alias of ``everest.service``.
 
 ## Update MCU
 

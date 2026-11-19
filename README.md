@@ -45,8 +45,50 @@ There are a lot of configuration parameters available, however, the most interes
 ```
 # Build with EVERYTHING to synchronized to HEAD revision
 BELAYBOX_UNSTABLE = "1"
+
+# Wi-Fi antenna of the CM4: internal (PCB), external (U.FL) or none (Wi-Fi disabled)
+WIFI_ANTENNA = "external"
 ```
 You can change them to your needs before building.
+
+#### Per-device Wi-Fi antenna override
+`WIFI_ANTENNA` is the default baked into `config.txt`. Each OTA bundle brings its own `config.txt`, so a device that needs a different antenna than the bundle was built with can be overridden on the shared boot partition (`mmcblk0p1`, mounted at `/boot`). This file is never touched by RAUC updates and applies to both slots:
+```
+mount -o remount,rw /boot
+echo "dtparam=ant1" > /boot/antenna.txt   # ant1 = internal, ant2 = external, or dtoverlay=disable-wifi
+mount -o remount,ro /boot
+reboot
+```
+Remove `/boot/antenna.txt` to go back to the build default. Note: a slot installed from an image built before this option existed has no `include antenna.txt` in its `config.txt` and ignores the file (external antenna is hard-coded there).
+
+#### Firmware version, cloud edition and product identity
+The bundles carry what the Pionix Cloud and RAUC match on. All of it has a default and can be set in `conf/local.conf`, e.g. to upload the bundles to your own cloud organisation and run your own release channels:
+```
+# version in the bundle manifest; the cloud reports the booted slot's version,
+# so use the same string as for "pionixcli bundle upload --version"
+FIRMWARE_VERSION = "1.2.0"
+
+# cloud edition, written to [meta.pionixcloud] edition-id of the bundle
+CLOUD_EDITION_ID:pn-belaybox-bundle = "com.example.belaybox"
+CLOUD_EDITION_ID:pn-umwcharger-bundle = "com.example.charger"
+
+# RAUC compatible of the image (/etc/rauc/system.conf) and of its bundle
+BELAYBOX_RAUC_COMPATIBLE = "MyBelaybox"
+UMWCHARGER_RAUC_COMPATIBLE = "MyCharger"
+
+# device model the cloud-connector reports
+CC_DEVICE_MODEL:pn-umwcharger-image = "MyCharger"
+```
+| Variable | Belaybox | uMWCharger |
+|---|---|---|
+| `FIRMWARE_VERSION` | `PV` of the bundle recipe (`1.0`) | same |
+| `CLOUD_EDITION_ID` | `com.pionix.belaybox` | `com.pionix.umwcharger` |
+| `*_RAUC_COMPATIBLE` | `Belaybox` | `uMWCharger` |
+| `CC_DEVICE_MODEL` | `BelayBox` | `uMWCharger` |
+
+A device only accepts bundles with its own compatible. To install a bundle of the other product (e.g. a uMWCharger bundle on a Belaybox for testing), use `rauc install --ignore-compatible <bundle>`. A cloud OTA cannot do that, so the first switch to a new compatible has to be installed locally.
+
+The cloud-connector's RAUC plugin learns the edition only from a cloud OTA. After a local `rauc install` the device reports the new version, but still the edition of its last cloud OTA (or none).
 
 ### Build the image
 To start building the image you need to source the yocto environment:

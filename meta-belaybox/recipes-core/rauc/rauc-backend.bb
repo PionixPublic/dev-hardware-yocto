@@ -2,7 +2,7 @@ SUMMARY = "Customization and configuration of the RAUC package"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-PR = "r0"
+PR = "r5"
 INSANE_SKIP:${PN} = "already-stripped usrmerge useless-rpaths arch file-rdeps"
 
 SRC_URI = "file://.profile \
@@ -13,6 +13,9 @@ SRC_URI = "file://.profile \
            file://raspberrypi-rauc.rules \
            file://rauc.conf \
            file://check_system_health.sh \
+           file://rauc-commit-gate.sh \
+           file://rauc-commit-wait.sh \
+           file://rauc-commit.service \
            "
 
 S = "${UNPACKDIR}"
@@ -34,6 +37,11 @@ do_install() {
     install -m 0644 ${S}/raspberrypi-rauc.rules ${D}/etc/udev/mount.blacklist.d/
 
     install -m 0755 ${S}/check_system_health.sh ${D}/${bindir}
+    install -m 0755 ${S}/rauc-commit-gate.sh ${D}/${bindir}
+    install -m 0755 ${S}/rauc-commit-wait.sh ${D}/${bindir}
+
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/rauc-commit.service ${D}${systemd_system_unitdir}
 }
 
 FILES:${PN} += "/mnt/rauc "
@@ -46,7 +54,15 @@ FILES:${PN} += "/usr/lib/rauc/post-install.sh "
 FILES:${PN} += "/etc/udev/mount.blacklist.d/raspberrypi-rauc.rules "
 FILES:${PN} += "/etc/modules-load.d/rauc.conf "
 FILES:${PN} += "${bindir}/check_system_health.sh "
+FILES:${PN} += "${bindir}/rauc-commit-gate.sh "
+FILES:${PN} += "${bindir}/rauc-commit-wait.sh "
+FILES:${PN} += "${systemd_system_unitdir}/rauc-commit.service "
 
 # Define the package
 PACKAGES = "${PN}"
 
+inherit systemd
+
+SYSTEMD_AUTO_ENABLE:${PN} = "enable"
+SYSTEMD_PACKAGES = "${PN}"
+SYSTEMD_SERVICE:${PN} = "rauc-commit.service"

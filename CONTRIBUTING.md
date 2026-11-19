@@ -208,7 +208,6 @@ The following pattern should be used when we release the images to the customers
 Product:
 - belaybox
 - umwcharger
-- umwcar
   
 Type:
 - image
@@ -230,5 +229,5 @@ Pipeline number: this is the number that the building pipeline has pushed the bi
 
 Examples:
 belaybox-image-raspberrypi4-kisrkstone-v1.0-186.wic.bz2  
-umwcar-bundle-raspberrypi4-kirkstone-v1.1-200-1.raucb
+umwcharger-bundle-raspberrypi4-kirkstone-v1.1-200-1.raucb
 belaybox-bundle-raspberrypi4-kisrkstone-v1.0-186.raucb

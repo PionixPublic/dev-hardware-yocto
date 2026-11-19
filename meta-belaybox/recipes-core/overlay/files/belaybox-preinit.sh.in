@@ -1,0 +1,60 @@
+#!/bin/sh
+#
+# BelayBox preinit: mounts the /etc and /var overlays before systemd starts, so that
+# systemd sees the persistent /etc (enabled units, drop-ins, machine-id) and mounts the
+# /var/volatile tmpfs on top of the /var overlay instead of underneath it.
+#
+# overlayfs-etc.bbclass renders this file with python str.format() and installs it as
+# /sbin/init (the original init becomes /sbin/init.orig). Only the class placeholders may
+# use curly braces: write shell variables as $VAR and never use brace-bodied functions.
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+OVERLAY_DIR={OVERLAYFS_ETC_MOUNT_POINT}
+OVERLAY_DEV={OVERLAYFS_ETC_DEVICE}
+
+# messages go to the kernel log so they show up in "journalctl -k" later
+log() ( echo "PREINIT: $*" > /dev/kmsg 2>/dev/null || echo "PREINIT: $*" )
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+
+log "start"
+
+# The root fs stays read-only here; systemd-fsck-root and systemd-remount-fs handle it.
+# systemd-fsck skips mounted filesystems, so check the overlay partition now.
+e2fsck -p $OVERLAY_DEV
+if [ $? -ge 4 ]; then
+    log "e2fsck reported uncorrected errors on $OVERLAY_DEV"
+fi
+
+if mount -n -t {OVERLAYFS_ETC_FSTYPE} -o {OVERLAYFS_ETC_MOUNT_OPTIONS} $OVERLAY_DEV $OVERLAY_DIR; then
+    if [ -e "$OVERLAY_DIR/OVERLAY_CLEAN" ]; then
+        log "OVERLAY_CLEAN found, resetting the overlay"
+        rm -rf $OVERLAY_DIR/etc_work $OVERLAY_DIR/etc_upper $OVERLAY_DIR/var_work $OVERLAY_DIR/var_upper $OVERLAY_DIR/logs
+        rm -f $OVERLAY_DIR/OVERLAY_CLEAN
+    fi
+
+    mkdir -p -m 0755 $OVERLAY_DIR/etc_upper $OVERLAY_DIR/etc_work
+    mkdir -p -m 0755 $OVERLAY_DIR/var_upper $OVERLAY_DIR/var_work $OVERLAY_DIR/logs
+
+    # /var/volatile is a tmpfs that systemd mounts on top of the /var overlay. Images that
+    # mounted the overlay too late left stale volatile/log and volatile/tmp in the upper layer.
+    rm -rf $OVERLAY_DIR/var_upper/volatile
+
+    mount -n -t overlay overlay -o lowerdir=/etc,upperdir=$OVERLAY_DIR/etc_upper,workdir=$OVERLAY_DIR/etc_work /etc \
+        || log "mounting the /etc overlay failed"
+    mount -n -t overlay overlay -o lowerdir=/var,upperdir=$OVERLAY_DIR/var_upper,workdir=$OVERLAY_DIR/var_work /var \
+        || log "mounting the /var overlay failed"
+
+    # seen after software updates: /var/log replaced by a regular file; tmpfiles
+    # (00-create-volatile.conf) recreates the symlink
+    if [ -f /var/log ] && [ ! -L /var/log ]; then
+        rm -f /var/log
+    fi
+else
+    log "mounting $OVERLAY_DEV on $OVERLAY_DIR failed, booting without overlays"
+fi
+
+log "done, starting {SBIN_INIT_NAME}"
+exec {SBIN_INIT_NAME} "$@"

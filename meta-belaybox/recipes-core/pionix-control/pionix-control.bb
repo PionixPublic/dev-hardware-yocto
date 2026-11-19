@@ -3,7 +3,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
-SRC_URI = "git://git@github.com/PionixPublic/pionix-control.git;branch=main;protocol=https \
+SRC_URI = "git://git@github.com/rckstrh/pionix-control.git;branch=fix/paho2-compatibility;protocol=https \
            file://charger_info.yaml \
            file://everest_configs.yaml \
            file://custom_configs \
@@ -13,8 +13,12 @@ SRC_URI = "git://git@github.com/PionixPublic/pionix-control.git;branch=main;prot
 
 S = "${WORKDIR}/git"
 
-SRCREV = "c9f864a50c63d6202e03be99c1dcf9ef1a37cd69"
-PR = "r0"
+# file:// directories are copied over the previous unpack without removing
+# files that were deleted from the layer, so start from an empty directory
+do_unpack[cleandirs] += "${WORKDIR}/custom_configs"
+
+SRCREV = "a8a79b205b54f5a307a044bb34ac06244970ef4c"
+PR = "r1"
 
 DEPENDS += " \
     python3-jinja2 \
@@ -37,6 +41,12 @@ RDEPENDS:${PN} = " \
 
 INSANE_SKIP:${PN} = "already-stripped useless-rpaths arch file-rdeps"
 
+# EVerest itself runs as the common everest.service (everest-service recipe);
+# upstream's everest-control.service is not installed. everest-service-umwcharger
+# takes over its settings and provides everest-control.service as an alias,
+# which pionix-control restarts over D-Bus. It also ships selected-everest.
+RDEPENDS:${PN} += "everest-service-umwcharger"
+
 inherit setuptools3
 inherit systemd
 
@@ -44,7 +54,6 @@ SYSTEMD_AUTO_ENABLE:${PN} = "enable"
 SYSTEMD_PACKAGES = "${PN}"
 
 SYSTEMD_SERVICE:${PN} += "pionix-control.service"
-SYSTEMD_SERVICE:${PN} += "everest-control.service"
 SYSTEMD_SERVICE:${PN} += "everest-setup.service"
 
 do_install:append() {
@@ -53,17 +62,14 @@ do_install:append() {
     install -d ${D}${sysconfdir}/everest
     install -d ${D}${sysconfdir}/everest/custom_configs
     install -m 0644 ${S}/pionix-control.service ${D}${systemd_system_unitdir}
-    install -m 0644 ${S}/everest-control.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/everest-setup.service ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/charger_info.yaml ${D}${sysconfdir}/everest
     install -m 0644 ${WORKDIR}/everest_configs.yaml ${D}${sysconfdir}/everest
     install -m 0644 ${WORKDIR}/custom_configs/* ${D}${sysconfdir}/everest/custom_configs/
     install -m 0644 ${WORKDIR}/setup.yaml ${D}${sysconfdir}/everest
-    ln -s -r ${D}/usr ${D}/etc/everest/selected-everest
 }
 
 FILES:${PN} += "${systemd_system_unitdir}/pionix-control.service \
-                ${systemd_system_unitdir}/everest-control.service \
                 ${systemd_system_unitdir}/everest-setup.service \
                 ${sysconfdir}/everest/* \
                "

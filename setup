@@ -28,7 +28,8 @@ layers = [
     {"rev":"01f7e1bbde162263bcfb93fd5a3bcdd1483f688c",  "branch":"master",         "repo":"rauc/meta-rauc",                   "path":"meta-rauc",          "remote":"github"},
     {"rev":"925357d25af4534807647d2a1d99e5b6c6df3af4",  "branch":"wrynose",        "repo":"meta-security",                    "path":"meta-security",      "remote":"yocto"},
     {"rev":"e1bdfe90563487f0a3253cd4b0d5bb7fa5194d83",  "branch":"wrynose",        "repo":"meta-virtualization",              "path":"meta-virtualization","remote":"yocto"},
-    {"rev":"bf015f631047d1bf5e1a107b26572007004cce4c",  "branch":"feature/initial-yocto-wrynose-compatibility", "repo":"EVerest", "path":"EVerest",        "remote":"github-everest"},
+    {"rev":"a3a4c3b2aafa8f5a4e21ee569170982f9e32bbce",  "branch":"main",           "repo":"EVerest",                          "path":"everest-core",       "remote":"github-everest"},
+    {"rev":"v0.5.1",                                    "branch":"scarthgap",      "repo":"PionixPublic/meta-pionix-cloud",   "path":"meta-pionix-cloud",  "remote":"github"},
 ]
 
 #
